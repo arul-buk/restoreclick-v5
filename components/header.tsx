@@ -14,7 +14,12 @@ export default function Header() {
         </Link>
         <div>
           {userId ? (
-            <UserButton afterSignOutUrl="/" />
+            <div className="flex items-center gap-4">
+              <Link href="/dashboard" className="text-gray-700 hover:text-gray-900 dark:text-gray-300 dark:hover:text-gray-100">
+                Dashboard
+              </Link>
+              <UserButton afterSignOutUrl="/" />
+            </div>
           ) : (
             <Button asChild>
               <Link href="/sign-in">Sign In</Link>

@@ -82,8 +82,67 @@ export async function POST(req: Request) {
 
   // Handle Clerk webhook
   if (svix_id && svix_timestamp && svix_signature) {
-    // Clerk webhook handling logic here
-    // ...
+    // Get the body
+    const payload = await req.text();
+    const WEBHOOK_SECRET = process.env.CLERK_WEBHOOK_SECRET;
+
+    if (!WEBHOOK_SECRET) {
+      throw new Error('You need a CLERK_WEBHOOK_SECRET in your .env');
+    }
+
+    // Verify the webhook
+    const wh = new Webhook(WEBHOOK_SECRET);
+
+    let evt: WebhookEvent;
+
+    try {
+      evt = wh.verify(payload, {
+        'svix-id': svix_id,
+        'svix-timestamp': svix_timestamp,
+        'svix-signature': svix_signature,
+      }) as WebhookEvent;
+    } catch (err) {
+      console.error('Error verifying webhook:', err);
+      return new Response('Error occured', { status: 400 });
+    }
+
+    // Get the ID and type
+    const { id } = evt.data;
+    const eventType = evt.type;
+
+    console.log(`Webhook with ID of ${id} and type of ${eventType}`);
+    console.log('Webhook body:', evt.data);
+
+    // Process the webhook event
+    switch (eventType) {
+      case 'user.created':
+        const createdUser = evt.data;
+        await supabaseAdmin.from('profiles').insert({
+          id: createdUser.id,
+          email: createdUser.email_addresses[0]?.email_address,
+          full_name: `${createdUser.first_name || ''} ${createdUser.last_name || ''}`.trim(),
+        });
+        console.log('User created in Supabase:', createdUser.id);
+        break;
+      case 'user.updated':
+        const updatedUser = evt.data;
+        await supabaseAdmin.from('profiles').update({
+          email: updatedUser.email_addresses[0]?.email_address,
+          full_name: `${updatedUser.first_name || ''} ${updatedUser.last_name || ''}`.trim(),
+        }).eq('id', updatedUser.id);
+        console.log('User updated in Supabase:', updatedUser.id);
+        break;
+      case 'user.deleted':
+        const deletedUser = evt.data;
+        if (deletedUser.id) {
+          await supabaseAdmin.from('profiles').delete().eq('id', deletedUser.id);
+          console.log('User deleted from Supabase:', deletedUser.id);
+        }
+        break;
+      default:
+        console.log(`Unhandled Clerk event type: ${eventType}`);
+    }
+
   }
 
 
