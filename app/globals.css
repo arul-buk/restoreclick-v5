@@ -1,0 +1,86 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  :root {
+    --background: 24 20% 98%; /* #FDFBF6 */
+    --foreground: 20 10% 27%; /* #4A4441 */
+
+    --card: 24 20% 98%; /* #FDFBF6 */
+    --card-foreground: 20 10% 27%; /* #4A4441 */
+
+    --popover: 24 20% 98%; /* #FDFBF6 */
+    --popover-foreground: 20 10% 27%; /* #4A4441 */
+
+    --primary: 10 60% 57%; /* #C8745A */
+    --primary-foreground: 0 0% 100%; /* White for contrast */
+
+    --secondary: 24 20% 60%; /* #A98B71 */
+    --secondary-foreground: 0 0% 100%; /* White for contrast */
+
+    --muted: 24 20% 90%; /* Lighter version of background for muted elements */
+    --muted-foreground: 20 10% 40%; /* Darker muted text */
+
+    --accent: 208 18% 53%; /* #6E8CA0 */
+    --accent-foreground: 0 0% 100%; /* White for contrast */
+
+    --destructive: 0 84.2% 60.2%;
+    --destructive-foreground: 0 0% 98%;
+
+    --border: 20 10% 27%; /* #4A4441 - for thin borders */
+    --input: 20 10% 27%; /* #4A4441 */
+    --ring: 10 60% 57%; /* #C8745A */
+
+    --radius: 0.5rem; /* Base border-radius for shadcn components */
+  }
+
+  /* Apply smooth scrolling globally */
+  html {
+    scroll-behavior: smooth;
+  }
+
+  /* Apply base font sizes and line heights */
+  body {
+    font-size: 18px;
+    line-height: 1.8;
+    color: hsl(var(--foreground));
+    background-color: hsl(var(--background));
+    /* For the faint noise/paper texture, you would typically use a background-image: url(...)
+       or a CSS filter. This is a placeholder comment as it's not directly a Tailwind class. */
+    /* background-image: url('/path/to/subtle-paper-texture.png'); */
+    /* background-repeat: repeat; */
+  }
+
+  h1,
+  h2,
+  h3 {
+    font-family: var(--font-lora); /* This implies Lora font should be set up */
+    color: hsl(var(--foreground)); /* Use primary text color for headlines */
+  }
+
+  /* Adjusting prose styles for the new typography */
+  .prose {
+    --tw-prose-body: hsl(var(--foreground));
+    --tw-prose-headings: hsl(var(--foreground));
+    --tw-prose-lead: hsl(var(--foreground));
+    --tw-prose-links: hsl(var(--primary));
+    --tw-prose-bold: hsl(var(--foreground));
+    --tw-prose-counters: hsl(var(--foreground));
+    --tw-prose-bullets: hsl(var(--foreground));
+    --tw-prose-hr: hsl(var(--border));
+    --tw-prose-quotes: hsl(var(--foreground));
+    --tw-prose-quote-borders: hsl(var(--border));
+    --tw-prose-captions: hsl(var(--foreground));
+    --tw-prose-code: hsl(var(--foreground));
+    --tw-prose-pre-code: hsl(var(--foreground));
+    --tw-prose-pre-bg: hsl(var(--muted));
+    --tw-prose-th-borders: hsl(var(--border));
+    --tw-prose-td-borders: hsl(var(--border));
+  }
+
+  /* Smooth scroll offset for fixed navigation */
+  section {
+    scroll-margin-top: 2rem;
+  }
+}
