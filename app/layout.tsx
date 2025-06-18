@@ -2,8 +2,6 @@
 
 import type { Metadata } from "next";
 import "./globals.css";
-import { ClerkProvider } from '@clerk/nextjs';
-import { publicConfig } from "@/lib/config.public";
 import ClientLayout from "./clientLayout";
 
 export const metadata: Metadata = {
@@ -18,10 +16,8 @@ export default function RootLayout({
   children: React.ReactNode;
 }>) {
   return (
-    <ClerkProvider publishableKey={publicConfig.clerk.publishableKey}>
       <ClientLayout>
         {children}
       </ClientLayout>
-    </ClerkProvider>
   );
 }

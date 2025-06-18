@@ -10,7 +10,7 @@ import EmailConfirmationModal from '@/components/restoration/email-confirmation-
 import ImageModal from '@/components/shared/image-modal';
 import BeforeAfterSlider from '@/components/restoration/before-after-slider';
 import { CheckCircle, AlertTriangle, Loader2 } from 'lucide-react';
-import { useUser } from '@clerk/nextjs';
+
 
 // This type represents the data structure used within this component for rendering
 interface LivePrediction {
@@ -36,7 +36,7 @@ interface ApiPredictionResponse {
 export default function PaymentSuccessPage() {
   const searchParams = useSearchParams();
   const batchId = searchParams.get('batch_id');
-  const { user, isSignedIn } = useUser();
+
 
   const [livePredictions, setLivePredictions] = useState<LivePrediction[]>([]);
   const [isLoading, setIsLoading] = useState(true);
@@ -212,20 +212,10 @@ export default function PaymentSuccessPage() {
   }, [livePredictions, isLoading, overallError]);
 
   const handleDownloadClick = (photoSrc: string | null, downloadAll: boolean) => {
-    if (isSignedIn && user?.primaryEmailAddress?.emailAddress) {
-      // User is signed in, proceed with download for authenticated user
-      console.log(`Authenticated user ${user.primaryEmailAddress.emailAddress} attempting download.`);
-      // For now, we'll just log and still open the email modal (which will be pre-filled)
-      // In a later step, we might directly trigger an API call here.
-      setCurrentPhotoSrcForDownload(photoSrc);
-      setIsDownloadingAll(downloadAll);
-      setIsEmailModalOpen(true);
-    } else {
-      // User is not signed in, open the email confirmation modal for guest checkout
-      setCurrentPhotoSrcForDownload(photoSrc);
-      setIsDownloadingAll(downloadAll);
-      setIsEmailModalOpen(true);
-    }
+    // User is not signed in, open the email confirmation modal for guest checkout
+    setCurrentPhotoSrcForDownload(photoSrc);
+    setIsDownloadingAll(downloadAll);
+    setIsEmailModalOpen(true);
   };
 
   const handleEmailModalClose = () => {
@@ -349,8 +339,7 @@ export default function PaymentSuccessPage() {
         downloadTargetSrc={currentPhotoSrcForDownload}
         isDownloadingAll={isDownloadingAll}
         allPhotoSrcs={livePredictions.filter(p => p.status === 'succeeded' && p.output_image_url).map(p => p.output_image_url!)}
-        defaultEmail={isSignedIn ? user?.primaryEmailAddress?.emailAddress : undefined}
-        isSignedIn={isSignedIn}
+        isSignedIn={false}
       />
 
       <ImageModal isOpen={isImageModalOpen} onClose={handleImageModalClose}>
