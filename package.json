@@ -10,7 +10,6 @@
     "pwa:generate-assets": "node scripts/generate-pwa-assets.js"
   },
   "dependencies": {
-    "@clerk/nextjs": "^5.7.5",
     "@mdx-js/loader": "^3.1.0",
     "@mdx-js/react": "^3.1.0",
     "@next/mdx": "^15.3.3",
@@ -23,7 +22,9 @@
     "class-variance-authority": "^0.7.1",
     "clsx": "^2.1.1",
     "date-fns": "^4.1.0",
+    "file-saver": "^2.0.5",
     "gray-matter": "^4.0.3",
+    "jszip": "^3.10.1",
     "lucide-react": "^0.515.0",
     "marked": "^15.0.12",
     "next": "^14.2.30",
@@ -31,6 +32,7 @@
     "pino": "^9.7.0",
     "radix-ui": "^1.4.2",
     "react": "^18",
+    "react-before-after-slider-component": "^1.1.8",
     "react-dom": "^18",
     "react-dropzone": "^14.3.8",
     "remark-gfm": "^4.0.1",
@@ -45,6 +47,7 @@
   },
   "devDependencies": {
     "@tailwindcss/typography": "^0.5.16",
+    "@types/file-saver": "^2.0.7",
     "@types/node": "^20",
     "@types/react": "^18",
     "@types/react-dom": "^18",

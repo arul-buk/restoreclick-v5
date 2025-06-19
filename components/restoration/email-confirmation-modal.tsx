@@ -18,23 +18,22 @@ import { CheckCircle, XCircle } from "lucide-react";
 interface EmailConfirmationModalProps {
   isOpen: boolean;
   onClose: () => void;
-  onConfirmDownload: (email: string, targetSrc: string | string[]) => void;
-  downloadTargetSrc: string | null;
-  isDownloadingAll: boolean;
-  allPhotoSrcs: string[];
+  onConfirm: (email: string) => void; // Simplified callback
   defaultEmail?: string;
-  isSignedIn?: boolean;
+  // Dynamic text props
+  title?: string;
+  description?: string;
+  buttonText?: string;
 }
 
 const EmailConfirmationModal: React.FC<EmailConfirmationModalProps> = ({
   isOpen,
   onClose,
-  onConfirmDownload,
-  downloadTargetSrc,
-  isDownloadingAll,
-  allPhotoSrcs,
+  onConfirm,
   defaultEmail,
-  isSignedIn,
+  title = "Confirm Your Email for Download", // Default title
+  description,
+  buttonText = "Download", // Default button text
 }) => {
   const [email, setEmail] = useState<string>(defaultEmail || "");
   const [isValidEmail, setIsValidEmail] = useState<boolean>(!!defaultEmail);
@@ -81,59 +80,25 @@ const EmailConfirmationModal: React.FC<EmailConfirmationModalProps> = ({
     setErrorMessage(null); // Clear error on input change
   };
 
-  const handleDownload = async () => {
+  const handleConfirm = () => {
     if (!isValidEmail) {
       setErrorMessage("Please enter a valid email address.");
       return;
     }
-
-    setIsSubmitting(true);
-    setErrorMessage(null);
-
-    try {
-      // Simulate API call to send email and track download
-      await new Promise((resolve) => setTimeout(resolve, 1500));
-
-      if (isDownloadingAll) {
-        // Trigger download for all photos
-        for (const src of allPhotoSrcs) {
-          window.open(src, "_blank"); // Opens each in a new tab
-        }
-        setConfirmationMessage(`Your images have been emailed to ${email}. Please check your inbox.`);
-        onConfirmDownload(email, allPhotoSrcs); // Notify parent of successful confirmation
-      } else if (downloadTargetSrc) {
-        // Trigger download for single photo
-        window.open(downloadTargetSrc, "_blank");
-        setConfirmationMessage(`Your image has been emailed to ${email}. Please check your inbox.`);
-        onConfirmDownload(email, downloadTargetSrc); // Notify parent of successful confirmation
-      } else {
-        setErrorMessage("No image selected for download.");
-        setIsSubmitting(false); // Ensure submitting state is reset on error
-        return;
-      }
-    } catch (error) {
-      console.error("Download confirmation failed:", error);
-      setErrorMessage("Failed to process download. Please try again.");
-    } finally {
-      setIsSubmitting(false);
-    }
+    // The modal's job is just to validate and pass the email up.
+    // The parent component will handle the API call and submission state.
+    onConfirm(email);
   };
 
   return (
     <Dialog open={isOpen} onOpenChange={handleOpenChange}>
       <DialogContent className="sm:max-w-[425px] bg-brand-background text-brand-text p-6 rounded-lg shadow-xl">
         <DialogHeader>
-          <DialogTitle className="font-serif text-2xl text-brand-text">Confirm Your Email for Download</DialogTitle>
+          <DialogTitle className="font-serif text-2xl text-brand-text">{title}</DialogTitle>
           <DialogDescription>
-            {isSignedIn ? (
-              <p className="text-sm text-gray-500 mb-4">
-                Your email address is pre-filled. Click &quot;Confirm Download&quot; to receive your restored photo(s).
-              </p>
-            ) : (
-              <p className="text-sm text-gray-500 mb-4">
-                Enter your email to receive a download link for your restored photo(s).
-              </p>
-            )}
+            <p className="text-sm text-gray-500 mb-4">
+              {description || "Enter your email to proceed."}
+            </p>
           </DialogDescription>
         </DialogHeader>
         <div className="grid gap-4 py-4">
@@ -146,9 +111,6 @@ const EmailConfirmationModal: React.FC<EmailConfirmationModalProps> = ({
           ) : (
             <>
               <div className="grid gap-2">
-                <Label htmlFor="email" className="text-brand-text">
-                  Email Address
-                </Label>
                 <Input
                   id="email"
                   type="email"
@@ -156,7 +118,6 @@ const EmailConfirmationModal: React.FC<EmailConfirmationModalProps> = ({
                   value={email}
                   onChange={handleEmailChange}
                   className="col-span-3"
-                  readOnly={isSignedIn}
                 />
                 {!isValidEmail && email.length > 0 && (
                   <p className="text-sm text-red-500 flex items-center">
@@ -169,14 +130,6 @@ const EmailConfirmationModal: React.FC<EmailConfirmationModalProps> = ({
                   </p>
                 )}
               </div>
-              <Button type="submit" className="w-full" disabled={!isValidEmail || isSubmitting}>
-                {isSubmitting ? "Processing..." : "Confirm Download"}
-              </Button>
-              {!isSignedIn && (
-                <p className="mt-4 text-center text-sm text-gray-500">
-                  You can sign in/sign up via the header to save your order history.
-                </p>
-              )}
             </>
           )}
         </div>
@@ -184,11 +137,11 @@ const EmailConfirmationModal: React.FC<EmailConfirmationModalProps> = ({
           {!confirmationMessage && (
             <Button
               type="submit"
-              onClick={handleDownload}
+              onClick={handleConfirm}
               disabled={!isValidEmail || isSubmitting}
               className="bg-brand-cta hover:bg-brand-cta/90"
             >
-              {isSubmitting ? "Processing..." : "Download"}
+              {isSubmitting ? "Processing..." : buttonText}
             </Button>
           )}
           <Button variant="outline" onClick={() => handleOpenChange(false)} className="">

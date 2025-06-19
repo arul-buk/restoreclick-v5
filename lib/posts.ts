@@ -1,6 +1,7 @@
 import { promises as fs } from 'fs';
 import path from 'path';
 import matter from 'gray-matter';
+import { parseISO } from 'date-fns';
 import { BlogPost, BlogPostFrontmatter } from '@/types/blog';
 
 const postsDirectory = path.join(process.cwd(), 'content/posts');
@@ -8,7 +9,7 @@ const postsDirectory = path.join(process.cwd(), 'content/posts');
 export async function getAllPosts(): Promise<BlogPost[]> {
   try {
     // Get file names under /posts
-    const fileNames = await fs.readdir(postsDirectory);
+    const fileNames = (await fs.readdir(postsDirectory)).filter(fileName => fileName.endsWith('.mdx'));
     
     // Process all posts in parallel
     const allPostsData = await Promise.all(
@@ -25,10 +26,12 @@ export async function getAllPosts(): Promise<BlogPost[]> {
           const { data, content } = matter(fileContents);
 
           // Combine the data with the id and content
+          const parsedDate = parseISO(data.date);
           return {
             slug,
             content,
-            ...(data as Omit<BlogPostFrontmatter, 'slug' | 'content'>),
+            date: parsedDate.toISOString(),
+            ...(data as Omit<BlogPostFrontmatter, 'slug' | 'content' | 'date'>),
           };
         } catch (error) {
           console.error(`Error processing file ${fileName}:`, error);
@@ -52,11 +55,13 @@ export async function getPostBySlug(slug: string): Promise<BlogPost | null> {
     const fullPath = path.join(postsDirectory, `${slug}.mdx`);
     const fileContents = await fs.readFile(fullPath, 'utf8');
     const { data, content } = matter(fileContents);
+    const parsedDate = parseISO(data.date);
 
     return {
       slug,
       content,
-      ...(data as Omit<BlogPostFrontmatter, 'slug' | 'content'>),
+      date: parsedDate.toISOString(),
+      ...(data as Omit<BlogPostFrontmatter, 'slug' | 'content' | 'date'>),
     };
   } catch (error) {
     console.error(`Error reading post ${slug}:`, error);

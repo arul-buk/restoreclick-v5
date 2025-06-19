@@ -74,11 +74,11 @@ export default function BeforeAfterSlider({ beforeSrc, afterSrc, alt }: BeforeAf
       onTouchStart={handleMouseDown}
     >
       {/* Before Image */}
-      <Image src={beforeSrc || "/placeholder.svg"} alt={`Before: ${alt}`} fill className="object-cover select-none" />
+      <Image src={afterSrc || "/placeholder.svg"} alt={`After: ${alt}`} fill className="object-cover select-none" />
 
       {/* After Image (clipped) */}
       <div className="absolute inset-0 overflow-hidden" style={{ clipPath: `inset(0 ${100 - sliderPosition}% 0 0)` }}>
-        <Image src={afterSrc || "/placeholder.svg"} alt={`After: ${alt}`} fill className="object-cover select-none" />
+        <Image src={beforeSrc || "/placeholder.svg"} alt={`Before: ${alt}`} fill className="object-cover select-none" />
       </div>
 
       {/* Slider Handle */}

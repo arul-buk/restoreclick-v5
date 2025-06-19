@@ -8,7 +8,9 @@ export default function Footer() {
       <div className="container mx-auto px-6 py-8">
         <div className="grid md:grid-cols-3 gap-8 text-center md:text-left">
           <div>
-            <h3 className="font-serif text-lg font-semibold text-brand-text">RestoreClick</h3>
+            <Link href="/" className="inline-block">
+              <Image src="/images/logo-no-slogan.png" alt="RestoreClick Logo" width={180} height={48} />
+            </Link>
             <p className="text-sm text-brand-text/70 mt-2">Your Legacy, Perfectly Preserved.</p>
             {/* Social Media Icons for Footer */}
             <div className="flex justify-center md:justify-start space-x-4 mt-4">
@@ -64,7 +66,7 @@ export default function Footer() {
           </p>
           <div className="mt-4 sm:mt-0">
             <Image
-              src="/placeholder.jpg"
+              src="/images/lilysign.png"
               alt="Lily's signature"
               width={80}
               height={40}

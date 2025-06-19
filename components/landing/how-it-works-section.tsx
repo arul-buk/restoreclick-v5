@@ -1,20 +1,22 @@
 import { UploadCloud, ScanSearch, Send } from "lucide-react"
+import Link from "next/link"
+import { Button } from "@/components/ui/button"
 
 const steps = [
   {
     icon: <UploadCloud className="h-12 w-12 text-brand-accent mb-4" />,
-    title: "1. Submit Your Collection",
-    description: "Easily upload your photos through our secure portal. We accept various formats.",
+    title: "1. Share Your Fading Memories",
+    description: "Simply send us the photo that holds a special place in your heart. Our system makes it easy to add your picture, ready for its journey back to life.",
   },
   {
     icon: <ScanSearch className="h-12 w-12 text-brand-accent mb-4" />,
-    title: "2. Artisan Review",
-    description: "Our digital artisans meticulously assess and restore each image with precision and care.",
+    title: "2. Our Clever AI Works Its Magic",
+    description: "Our smart technology gently studies every detail, bringing back vibrant colors, sharpening loving smiles, and healing any tiny imperfections. It’s like watching time melt away.",
   },
   {
     icon: <Send className="h-12 w-12 text-brand-accent mb-4" />,
-    title: "3. Receive Your Digital Archive",
-    description: "Get your beautifully restored photos delivered as high-resolution digital files.",
+    title: "3.  Receive Your Memories, Reborn",
+    description: "Your beautifully clear and revived photos will be sent straight to your email. They willl be ready to cherish, print for a frame, or share with family members.",
   },
 ]
 
@@ -40,6 +42,11 @@ export default function HowItWorksSection() {
               <p className="text-brand-text/80 leading-relaxed">{step.description}</p>
             </div>
           ))}
+        </div>
+        <div className="text-center mt-16">
+          <Link href="/restore">
+            <Button size="lg" className="text-lg px-8 py-4">Start Your Restoration</Button>
+          </Link>
         </div>
       </div>
     </section>

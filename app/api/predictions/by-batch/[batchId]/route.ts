@@ -1,6 +1,12 @@
 import { NextRequest, NextResponse } from 'next/server';
 import supabaseAdmin from '@/lib/supabaseAdmin';
 import logger from '@/lib/logger';
+import Replicate from 'replicate';
+import { GET as getReplicatePrediction } from '@/app/api/replicate/predictions/[id]/route';
+
+const replicate = new Replicate({
+  auth: process.env.REPLICATE_API_TOKEN!,
+});
 
 export async function GET(
   req: NextRequest,
@@ -49,6 +55,77 @@ export async function GET(
     if (predictionsError) {
       log.error({ error: predictionsError, orderId }, 'Error fetching predictions for order.');
       return NextResponse.json({ error: 'Failed to fetch predictions' }, { status: 500 });
+    }
+
+    if (!predictionsData || predictionsData.length === 0) {
+      log.info('No predictions found for order.');
+      return NextResponse.json([]);
+    }
+
+    // Check for predictions that need Replicate polling (not in final state)
+    const nonFinalPredictions = predictionsData.filter(pred => 
+      pred.status === 'starting' || pred.status === 'processing'
+    );
+
+    if (nonFinalPredictions.length > 0) {
+      log.info({ count: nonFinalPredictions.length }, 'Polling Replicate for non-final predictions.');
+      
+      // Poll Replicate for each non-final prediction and update database
+      for (const prediction of nonFinalPredictions) {
+        try {
+          log.info({ replicateId: prediction.replicate_id }, 'Polling Replicate for prediction status.');
+          
+          const replicatePrediction = await replicate.predictions.get(prediction.replicate_id);
+          
+          if (replicatePrediction.status !== prediction.status) {
+            log.info({ 
+              replicateId: prediction.replicate_id, 
+              oldStatus: prediction.status, 
+              newStatus: replicatePrediction.status 
+            }, 'Status changed, updating database.');
+            
+            // Update database with new status
+            const updateData: any = {
+              status: replicatePrediction.status,
+              updated_at: new Date().toISOString(),
+            };
+            
+            // If succeeded, store the output URL
+            if (replicatePrediction.status === 'succeeded' && replicatePrediction.output) {
+              updateData.output_image_url = replicatePrediction.output;
+
+              // Trigger the email sending logic by calling the other GET endpoint
+              // We need to construct a mock request and params object for it
+              const mockRequest = new NextRequest(req.url); // Use the current request URL
+              const mockParams = { params: Promise.resolve({ id: prediction.replicate_id }) };
+              
+              log.info({ replicateId: prediction.replicate_id }, 'Triggering email send via /api/replicate/predictions/[id].');
+              // Await the call to ensure email sending completes before returning
+              await getReplicatePrediction(mockRequest, mockParams);
+            }
+            
+            // If failed, store the error
+            if (replicatePrediction.status === 'failed' && replicatePrediction.error) {
+              updateData.error_message = replicatePrediction.error;
+            }
+            
+            await supabaseAdmin
+              .from('predictions')
+              .update(updateData)
+              .eq('replicate_id', prediction.replicate_id);
+              
+            // Update the local prediction object for response
+            Object.assign(prediction, updateData);
+            
+            log.info({ replicateId: prediction.replicate_id, newStatus: replicatePrediction.status }, 'Database updated successfully.');
+          } else {
+            log.info({ replicateId: prediction.replicate_id, status: prediction.status }, 'No status change detected.');
+          }
+        } catch (replicateError) {
+          log.error({ error: replicateError, replicateId: prediction.replicate_id }, 'Error polling Replicate for prediction.');
+          // Continue with other predictions even if one fails
+        }
+      }
     }
 
     log.info({ count: predictionsData?.length || 0 }, 'Successfully fetched predictions.');

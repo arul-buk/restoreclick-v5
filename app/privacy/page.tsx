@@ -21,7 +21,7 @@ export default function PrivacyPolicyPage() {
         <article className="prose prose-lg lg:prose-xl mx-auto text-brand-text prose-headings:font-serif prose-headings:text-brand-text prose-a:text-brand-cta prose-a:hover:text-brand-cta/80 prose-strong:text-brand-text">
           <h2>Introduction</h2>
           <p>
-            Welcome to RestoreClick's Privacy Policy. We are committed to protecting your personal data and your right
+            Welcome to RestoreClick&apos;s Privacy Policy. We are committed to protecting your personal data and your right
             to privacy. If you have any questions or concerns about our policy, or our practices with regard to your
             personal information, please contact us at privacy@restoreclick.com.
           </p>

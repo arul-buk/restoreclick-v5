@@ -1,7 +1,7 @@
 // app/api/checkout/route.ts
 
 import { NextResponse } from 'next/server';
-import { auth } from '@clerk/nextjs/server';
+
 import { headers } from 'next/headers';
 import type Stripe from 'stripe';
 import supabaseAdmin from '@/lib/supabaseAdmin';
@@ -23,7 +23,6 @@ export async function POST(req: Request) {
   const log = logger.child({ api_route: 'POST /api/checkout' });
 
   try {
-    const { userId } = auth(); // Attempt to get Clerk user ID
     const headersList = headers();
     const origin = headersList.get('origin') || 'http://localhost:3001';
     const body: CheckoutRequest = await req.json().catch(() => ({}));
@@ -52,65 +51,24 @@ export async function POST(req: Request) {
       cancel_url: cancelUrl,
       metadata: {
         ...(body.metadata || {}),
-        ...(imageBatchId && { imageBatchId: imageBatchId }), // Use camelCase to match webhook handler
+        ...(imageBatchId && { batch_id: imageBatchId }), // Use snake_case to match webhook handler
       },
     };
 
-    if (userId) {
-      log.info({ clerk_user_id: userId, body }, 'Authenticated user initiated checkout process.');
-      const { data: profile, error: dbError } = await supabaseAdmin
-        .from('profiles')
-        .select('email, stripe_customer_id')
-        .eq('clerk_user_id', userId)
-        .single();
-
-      if (dbError || !profile?.email) {
-        log.error({ error: dbError, clerk_user_id: userId, profile_data: profile }, 'User profile not found or email missing for authenticated user.');
-        // For authenticated users, profile is expected. If not found, could be an issue.
-        // Depending on strictness, could return error or proceed as guest-like.
-        // For now, let's proceed cautiously and error if profile is missing for an auth'd user.
-        return new NextResponse('User profile not found for authenticated user', { status: 404 });
-      }
-
-      stripeSessionParams.metadata = {
-        ...stripeSessionParams.metadata, // This already includes image_batch_id if present
-        clerk_user_id: userId,
-      };
-
-      if (profile.stripe_customer_id) {
-        stripeSessionParams.customer = profile.stripe_customer_id;
-      } else {
-        stripeSessionParams.customer_email = profile.email;
-      }
-      log.info({ 
-        email: profile.email, 
-        price_id: priceId, 
-        quantity,
-        mode,
-        existing_customer_id: profile.stripe_customer_id 
-      }, 'Attempting to create Stripe Checkout session for authenticated user.');
-
-    } else {
-      log.info({ body }, 'Guest user initiated checkout process.');
-      // For guest users, Stripe will collect the email on the checkout page.
-      // customer_email is not set here to allow Stripe's UI to collect it.
-      // Ensure Stripe Checkout form is configured to collect email if not automatically doing so.
-      log.info({ 
-        price_id: priceId, 
-        quantity,
-        mode
-      }, 'Attempting to create Stripe Checkout session for guest user.');
-    }
+    log.info({ body }, 'Guest user initiated checkout process.');
+    // For guest users, Stripe will collect the email on the checkout page.
+    // customer_email is not set here to allow Stripe's UI to collect it.
+    // Ensure Stripe Checkout form is configured to collect email if not automatically doing so.
 
     const stripeSession = await stripe.checkout.sessions.create(stripeSessionParams);
 
     if (!stripeSession.url) {
-      log.error({ clerk_user_id: userId || 'guest' }, 'Stripe failed to return a valid checkout session URL.');
+      log.error({ }, 'Stripe failed to return a valid checkout session URL.');
       throw new Error('Failed to create Stripe session: No URL returned.');
     }
 
     log.info({ 
-      user: userId || 'guest',
+      user: 'guest',
       stripe_session_id: stripeSession.id, 
       session_url: stripeSession.url,
       mode

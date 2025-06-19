@@ -27,11 +27,10 @@ const examples = [
   },
   {
     id: 4,
-    beforeSrc: "/placeholder.jpg",
-    afterSrc:
-      "/placeholder.jpg" /* query="restored birthday photo, creases and tears removed, vibrant colors" */,
-    alt: "Birthday photo with severe fold",
-    description: "Creases and tears seamlessly repaired from a folded birthday photo.",
+    beforeSrc: "/images/restoration-examples/birthday-before.jpg",
+    afterSrc: "/images/restoration-examples/birthday-after.png",
+    alt: "The Birthday Memory, 1970s",
+    description: "A cherished birthday memory from the 1970s, restored to its original vibrancy, with creases and tears seamlessly repaired.",
   },
   {
     id: 5,
@@ -43,9 +42,8 @@ const examples = [
   },
   {
     id: 6,
-    beforeSrc: "/placeholder.jpg",
-    afterSrc:
-      "/placeholder.jpg" /* query="restored wedding photo, stains removed, pristine condition" */,
+    beforeSrc: "/images/restoration-examples/wedding-before.jpg",
+    afterSrc: "/images/restoration-examples/wedding-after.png" /* query="restored wedding photo, stains removed, pristine condition" */,
     alt: "Wedding photo with large stain",
     description: "Large stains and damage meticulously removed from a wedding photo.",
   },

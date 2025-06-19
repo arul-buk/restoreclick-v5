@@ -2,6 +2,7 @@
 import { useState, useEffect } from "react"
 import Link from "next/link"
 import { Button } from "@/components/ui/button"
+import Image from "next/image";
 import { Facebook, Instagram, Menu } from "lucide-react" // Import Menu icon
 
 interface FloatingHeaderProps {
@@ -17,11 +18,8 @@ export default function FloatingHeader({ setIsMobileMenuOpen }: FloatingHeaderPr
         <div className="container mx-auto px-6 h-16 flex items-center justify-between">
           {/* Logo & Navigation */}
           <div className="flex items-center space-x-8">
-            <Link
-              href="/"
-              className="font-serif text-xl font-bold text-brand-text hover:text-brand-cta transition-colors"
-            >
-              RestoreClick
+            <Link href="/" className="flex items-center">
+              <Image src="/images/logo-no-slogan.png" alt="RestoreClick Logo" width={150} height={40} priority />
             </Link>
 
             {/* Desktop Navigation */}
@@ -30,7 +28,7 @@ export default function FloatingHeader({ setIsMobileMenuOpen }: FloatingHeaderPr
                 Our Story
               </Link>
               <Link
-                href="/restore-old-photos"
+                href="/#how-it-works"
                 className="text-brand-text hover:text-brand-cta transition-colors font-medium"
               >
                 How It Works

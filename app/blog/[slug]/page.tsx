@@ -5,14 +5,7 @@ import { getPostBySlug, getAllPostSlugs } from "@/lib/posts"
 import { MDXRemote } from 'next-mdx-remote/rsc'
 import { format } from 'date-fns'
 import Link from "next/link"
-
-// Custom components to be used in MDX
-const components = {
-  // Add any custom components you want to use in your MDX here
-  // For example:
-  // h1: (props: any) => <h1 className="text-3xl font-bold my-4" {...props} />,
-  // p: (props: any) => <p className="mb-4 leading-relaxed" {...props} />,
-}
+import MDXComponents from '@/components/MDXComponents';
 
 // Generate static params for SSG
 export async function generateStaticParams() {
@@ -26,7 +19,7 @@ export async function generateMetadata({
 }: { 
   params: { slug: string } 
 }): Promise<Metadata> {
-  const post = await getPostBySlug(params.slug)
+  const post = await getPostBySlug(params.slug);
 
   if (!post) {
     return {
@@ -55,7 +48,7 @@ export async function generateMetadata({
 }
 
 export default async function BlogPostPage({ params }: { params: { slug: string } }) {
-  const post = await getPostBySlug(params.slug)
+  const post = await getPostBySlug(params.slug);
 
   if (!post) {
     notFound()
@@ -124,7 +117,7 @@ export default async function BlogPostPage({ params }: { params: { slug: string 
         <div className="prose prose-lg max-w-none">
           <MDXRemote 
             source={post.content}
-            components={components}
+            components={MDXComponents}
           />
         </div>
 

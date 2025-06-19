@@ -7,9 +7,7 @@ const replicate = new Replicate({
   auth: process.env.REPLICATE_API_TOKEN!,
 });
 
-const MODEL_VERSION =
-  process.env.REPLICATE_MODEL_VERSION ||
-  '85ae46551612b8f778348846b6ce1ce1b340e384fe2062399c0c412be29e107d';
+
 
 export async function POST(req: NextRequest) {
   const log = logger.child({ api_route: 'POST /api/replicate/initiate-restoration' });
@@ -30,11 +28,9 @@ export async function POST(req: NextRequest) {
     const predictionPromises = photoUrls.map((url: string, index: number) => {
       log.info({ photoUrl: url, index }, 'Starting prediction for image.');
       return replicate.predictions.create({
-        version: MODEL_VERSION,
+        model: 'flux-kontext-apps/restore-image',
         input: {
           input_image: url,
-          scale: 2,
-          face_enhance: true,
         },
       }).then((newPrediction) => {
         log.info({ replicate_id: newPrediction.id, input_image_url: url }, 'Successfully created Replicate prediction.');

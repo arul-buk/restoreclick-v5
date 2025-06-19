@@ -47,7 +47,7 @@ export default function PaymentPageClient() {
       <div className="w-full max-w-lg">
         <div className="text-center mb-8">
           <h1 className="font-serif text-4xl font-normal text-brand-text mb-2">Secure Checkout</h1>
-          <p className="text-lg text-brand-text/70">Complete your order for museum-quality restorations.</p>
+          <p className="text-sm text-gray-500 mt-2">Your card will be charged only after you&apos;ve reviewed and approved the restorations.</p>
         </div>
 
         {/* Mock-up Disclaimer */}
@@ -56,7 +56,7 @@ export default function PaymentPageClient() {
           <AlertTitle className="font-serif text-lg">This is a Mock Payment Page</AlertTitle>
           <AlertDescription className="text-brand-text/80">
             This page simulates a payment gateway for demonstration purposes only. No real transactions will occur.
-            Clicking "Pay Now" will simulate a successful payment and redirect you.
+            Clicking &quot;Pay Now&quot; will simulate a successful payment and redirect you.
           </AlertDescription>
         </Alert>
 

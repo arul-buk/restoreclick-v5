@@ -199,34 +199,38 @@ export default function RestorePhotosClient() {
       {/* Main Upload Area & Thumbnails */}
       <div className="space-y-8">
         {/* Upload Dropzone */}
-        <Card className="border-2 border-dashed border-brand-text/20 hover:border-brand-cta/50 transition-colors">
-          <CardContent className="p-8">
-            <div
-              {...getRootProps()}
-              className={`text-center cursor-pointer transition-all duration-200 ${isDragActive ? "scale-105" : ""}`}
-            >
-              <input {...getInputProps()} />
-              <div className="space-y-6">
-                <div className="mx-auto w-16 h-16 rounded-full bg-brand-cta/10 flex items-center justify-center">
-                  <Upload className="h-8 w-8 text-brand-cta" />
-                </div>
-                <div className="space-y-2">
-                  <h3 className="font-serif text-2xl font-medium text-brand-text">
-                    {isDragActive ? "Drop your photos here" : "Upload Your Photos"}
-                  </h3>
-                  <p className="text-brand-text/70">
-                    Drag and drop your images here, or{" "}
-                    <span className="text-brand-cta font-medium">click to browse</span>
-                  </p>
-                </div>
-                <div className="text-sm text-brand-text/60">
-                  <p>Accepted formats: JPG, PNG, TIFF, BMP</p>
-                  <p>Maximum file size: 50MB per image</p>
+
+        {/* Upload Dropzone (conditionally rendered) */}
+        {uploadedFiles.length === 0 && (
+          <Card className="border-2 border-dashed border-brand-text/20 hover:border-brand-cta/50 transition-colors">
+            <CardContent className="p-8">
+              <div
+                {...getRootProps()}
+                className={`text-center cursor-pointer transition-all duration-200 ${isDragActive ? "scale-105" : ""}`}
+              >
+                <input {...getInputProps()} />
+                <div className="space-y-6">
+                  <div className="mx-auto w-16 h-16 rounded-full bg-brand-cta/10 flex items-center justify-center">
+                    <Upload className="h-8 w-8 text-brand-cta" />
+                  </div>
+                  <div className="space-y-2">
+                    <h3 className="font-serif text-2xl font-medium text-brand-text">
+                      {isDragActive ? "Drop your photos here" : "Upload Your Photos"}
+                    </h3>
+                    <p className="text-brand-text/70">
+                      Drag and drop your images here, or{" "}
+                      <span className="text-brand-cta font-medium">click to browse</span>
+                    </p>
+                  </div>
+                  <div className="text-sm text-brand-text/60">
+                    <p>Accepted formats: JPG, PNG, TIFF, BMP</p>
+                    <p>Maximum file size: 50MB per image</p>
+                  </div>
                 </div>
               </div>
-            </div>
-          </CardContent>
-        </Card>
+            </CardContent>
+          </Card>
+        )}
 
         {/* Upload Error Message */}
         {uploadError && (
@@ -240,7 +244,7 @@ export default function RestorePhotosClient() {
         {uploadedFiles.length > 0 && (
           <div className="space-y-4">
             <h4 className="font-serif text-xl font-medium text-brand-text">Your Memories</h4>
-            <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-4">
+            <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-4 mx-auto w-fit">
               {uploadedFiles.map((file) => (
                 <Card key={file.id} className="relative group overflow-hidden">
                   <CardContent className="p-0">
@@ -286,21 +290,23 @@ export default function RestorePhotosClient() {
           </div>
         )}
         {/* CTA Button */}
-        <Button
-          size="lg"
-          className="w-full sm:w-auto bg-brand-cta hover:bg-brand-cta/90 text-white"
-          onClick={handleCheckout}
-          disabled={!canProceed || isLoading}
-        >
-          {isLoading ? (
-            <>
-              <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-              Processing...
-            </>
-          ) : (
-            `Restore ${uploadedFiles.length} Photo${uploadedFiles.length !== 1 ? 's' : ''} for $${totalCost.toFixed(2)}`
-          )}
-        </Button>
+        <div className="text-center">
+          <Button
+            size="lg"
+            className="w-full sm:w-auto bg-brand-cta hover:bg-brand-cta/90 text-white"
+            onClick={handleCheckout}
+            disabled={!canProceed || isLoading}
+          >
+            {isLoading ? (
+              <>
+                <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                Processing...
+              </>
+            ) : (
+              `Restore ${uploadedFiles.length} Photo${uploadedFiles.length !== 1 ? "s" : ""} for $${totalCost.toFixed(2)}`
+            )}
+          </Button>
+        </div>
       </div>
       {/* Order Summary Section (now below the upload area) */}
       {uploadedFiles.length > 0 && (
@@ -343,7 +349,7 @@ export default function RestorePhotosClient() {
                 {/* What's Included - Collapsed by default */}
                 <details className="group">
                   <summary className="cursor-pointer text-brand-text/70 hover:text-brand-text transition-colors">
-                    What's included ↓
+                    What&apos;s included ↓
                   </summary>
                   <ul className="mt-2 space-y-1 text-xs text-brand-text/60 pl-4">
                     <li>• High-resolution digital restoration</li>
@@ -360,7 +366,7 @@ export default function RestorePhotosClient() {
           <div className="bg-brand-secondary/5 rounded-lg p-3 text-center">
             <p className="text-xs text-brand-text/70">
               <ImageIcon className="h-3 w-3 inline mr-1" />
-              100% Satisfaction. We wont let you go unhappy.
+              100% Satisfaction. We won&apos;t let you go unhappy.
             </p>
           </div>
         </div>

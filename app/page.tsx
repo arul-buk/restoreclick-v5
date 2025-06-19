@@ -5,6 +5,8 @@ import CraftShowcaseSection from "@/components/landing/craft-showcase-section"
 import ArtisanProcessSection from "@/components/landing/artisan-process-section"
 import FeaturedTestimonialSection from "@/components/landing/featured-testimonial-section"
 import GentleInvitationSection from "@/components/landing/gentle-invitation-section"
+import HowItWorksSection from "@/components/landing/how-it-works-section"
+import HomePricingSection from "@/components/landing/home-pricing-section"
 
 export const metadata: Metadata = {
   title: "RestoreClick | Your Legacy, Perfectly Preserved",
@@ -28,8 +30,14 @@ export default function HomePage() {
         <section id="process">
           <ArtisanProcessSection />
         </section>
+        <section id="how-it-works">
+          <HowItWorksSection />
+        </section>
         <section id="testimonials">
           <FeaturedTestimonialSection />
+        </section>
+        <section id="pricing">
+          <HomePricingSection />
         </section>
         <section id="invitation">
           <GentleInvitationSection />

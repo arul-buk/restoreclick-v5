@@ -72,7 +72,7 @@ export default function ContactPageClient() {
           {/* Right Column: Content and Form */}
           <div>
             <header className="mb-8">
-              <h1 className="font-serif text-4xl lg:text-5xl font-normal text-brand-text mb-4">We're Here to Help</h1>
+              <h1 className="font-serif text-4xl lg:text-5xl font-normal text-brand-text mb-4">We&apos;re Here to Help</h1>
               <p className="text-xl text-brand-text/80 leading-relaxed">
                 Whether you have a question about your photo, need help with an order, or just want to share a memory,
                 we read every message and would love to hear from you. Our small team will get back to you within one
@@ -125,7 +125,7 @@ export default function ContactPageClient() {
                 <Alert className="bg-green-50 border-green-200 text-green-800">
                   <CheckCircle className="h-4 w-4" />
                   <AlertTitle>Success!</AlertTitle>
-                  <AlertDescription>Your message has been sent. We'll get back to you soon.</AlertDescription>
+                  <AlertDescription>Your message has been sent. We&apos;ll get back to you soon.</AlertDescription>
                 </Alert>
               )}
 

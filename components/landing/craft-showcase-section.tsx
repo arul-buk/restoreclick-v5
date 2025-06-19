@@ -3,26 +3,26 @@ import Image from "next/image"
 const showcaseItems = [
   {
     id: 1,
-    beforeSrc: "/placeholder.jpg",
-    afterSrc: "/placeholder.jpg",
+    beforeSrc: "/images/restoration-examples/birthday-before.jpg",
+    afterSrc: "/images/restoration-examples/birthday-after.png",
     title: "The Birthday Memory, 1970s",
     description:
       "A cherished childhood birthday photo, once severely folded and discolored, now perfectly seamless and vibrant.",
   },
   {
     id: 2,
-    beforeSrc: "/placeholder.jpg",
-    afterSrc: "/placeholder.jpg",
-    title: "The Wedding Day, 1960",
+    beforeSrc: "/images/restoration-examples/wedding-before.png",
+    afterSrc: "/images/restoration-examples/wedding-after.png",
+    title: "The Wedding Day, 1980",
     description:
       "A beautiful wedding portrait, rescued from significant staining and brought back to its pristine elegance.",
   },
   {
     id: 3,
-    beforeSrc: "/placeholder.jpg",
-    afterSrc: "/placeholder.jpg",
+    beforeSrc: "/images/restoration-examples/family-before.jpeg",
+    afterSrc: "/images/restoration-examples/family-after.png",
     title: "The Family Portrait, 1965",
-    description: "A beloved family portrait, once torn and taped, now seamlessly repaired and reunited.",
+    description: "A beloved family portrait, once faded and stained, now seamlessly repaired and reunited.",
   },
 ]
 

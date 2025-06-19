@@ -1,12 +1,44 @@
 import { NextRequest, NextResponse } from 'next/server';
-import supabaseAdmin from '@/lib/supabaseAdmin';
+import supabaseAdmin from '@/lib/supabaseAdmin'; // Corrected import for supabaseAdmin
+import { sendRestorationCompleteEmail } from '@/lib/sendgrid';
+import { downloadFileAsBuffer, getSupabaseStoragePathFromUrl } from '@/lib/supabase-utils';
 import logger from '@/lib/logger';
+import { serverConfig } from '@/lib/config.server';
 import Replicate from 'replicate';
 import { v4 as uuidv4 } from 'uuid';
 
 const replicate = new Replicate({
   auth: process.env.REPLICATE_API_TOKEN!,
 });
+
+// Retry utility function with exponential backoff
+async function retryWithBackoff<T>(
+  operation: () => Promise<T>,
+  maxRetries: number = 3,
+  initialDelay: number = 1000,
+  operationName: string = 'operation'
+): Promise<T> {
+  let lastError: Error;
+  
+  for (let attempt = 0; attempt < maxRetries; attempt++) {
+    try {
+      logger.info(`Attempting ${operationName} (attempt ${attempt + 1}/${maxRetries})`);
+      return await operation();
+    } catch (error) {
+      lastError = error as Error;
+      logger.error(`${operationName} failed on attempt ${attempt + 1}:`, lastError);
+      
+      if (attempt < maxRetries - 1) {
+        const delay = initialDelay * Math.pow(2, attempt);
+        logger.info(`Retrying ${operationName} in ${delay}ms...`);
+        await new Promise(resolve => setTimeout(resolve, delay));
+      }
+    }
+  }
+  
+  logger.error(`${operationName} failed after ${maxRetries} attempts`);
+  throw lastError!;
+}
 
 export async function GET(
   req: NextRequest, 
@@ -18,11 +50,15 @@ export async function GET(
     log.info('Polling for prediction status.');
 
     // Check database first to see if this prediction has already been processed
-    const { data: dbPrediction, error: dbFetchError } = await supabaseAdmin
-      .from('predictions')
-      .select('replicate_id, order_id, status, output_image_url, error_message') // Ensure order_id is selected
-      .eq('replicate_id', predictionId)
-      .single();
+    const fetchDbPrediction = async () => {
+      const { data: dbPrediction, error: dbFetchError } = await supabaseAdmin
+        .from('predictions')
+        .select('replicate_id, order_id, status, output_image_url, error_message, input_image_url') // Ensure order_id is selected
+        .eq('replicate_id', predictionId)
+        .single();
+      return { dbPrediction, dbFetchError };
+    };
+    const { dbPrediction, dbFetchError } = await retryWithBackoff(fetchDbPrediction, 3, 1000, 'fetch prediction from DB');
 
     if (dbFetchError && dbFetchError.code !== 'PGRST116') { // PGRST116: Not found, which is fine
       log.error({ error: dbFetchError }, 'Error fetching prediction from DB.');
@@ -65,14 +101,17 @@ export async function GET(
       if (!prediction.output || (Array.isArray(prediction.output) && prediction.output.length === 0)) {
         log.error('Prediction succeeded but no output URL was provided by Replicate.');
         // Update status to reflect error or handle as needed
-        await supabaseAdmin
-          .from('predictions')
-          .update({
-            status: 'failed', // Or a custom status like 'succeeded_no_output'
-            error_message: 'Replicate succeeded but provided no output URL.',
-            updated_at: new Date().toISOString(),
-          })
-          .eq('replicate_id', prediction.id);
+        const updateDbPrediction = async () => {
+          await supabaseAdmin
+            .from('predictions')
+            .update({
+              status: 'failed', // Or a custom status like 'succeeded_no_output'
+              error_message: 'Replicate succeeded but provided no output URL.',
+              updated_at: new Date().toISOString(),
+            })
+            .eq('replicate_id', prediction.id);
+        };
+        await retryWithBackoff(updateDbPrediction, 3, 1000, 'update prediction status in DB');
         return NextResponse.json(prediction); // Return original prediction, client can see our DB status
       }
 
@@ -83,14 +122,17 @@ export async function GET(
 
       if (!response.ok) {
         log.error({ url: restoredImageUrl, status: response.status }, 'Failed to download image from Replicate.');
-        await supabaseAdmin
-          .from('predictions')
-          .update({
-            status: 'failed', // Or 'download_failed'
-            error_message: `Failed to download image from Replicate. Status: ${response.status}`,
-            updated_at: new Date().toISOString(),
-          })
-          .eq('replicate_id', prediction.id);
+        const updateDbPrediction = async () => {
+          await supabaseAdmin
+            .from('predictions')
+            .update({
+              status: 'failed', // Or 'download_failed'
+              error_message: `Failed to download image from Replicate. Status: ${response.status}`,
+              updated_at: new Date().toISOString(),
+            })
+            .eq('replicate_id', prediction.id);
+        };
+        await retryWithBackoff(updateDbPrediction, 3, 1000, 'update prediction status in DB');
         // Still return the prediction, client can check DB for detailed status
         return NextResponse.json(prediction);
       }
@@ -102,19 +144,26 @@ export async function GET(
         log.info({ orderId: orderIdToUse }, "Using order_id from initial DB record.");
       } else {
         log.warn("order_id not available from initial DB check or initial record not found. Fetching details for path construction.");
-        const { data: currentPredictionRecord, error: currentPredictionError } = await supabaseAdmin
-          .from('predictions')
-          .select('order_id') // only need order_id
-          .eq('replicate_id', predictionId)
-          .single();
+        const fetchOrderId = async () => {
+          const { data: currentPredictionRecord, error: currentPredictionError } = await supabaseAdmin
+            .from('predictions')
+            .select('order_id') // only need order_id
+            .eq('replicate_id', predictionId)
+            .single();
+          return { currentPredictionRecord, currentPredictionError };
+        };
+        const { currentPredictionRecord, currentPredictionError } = await retryWithBackoff(fetchOrderId, 3, 1000, 'fetch order_id from DB');
 
         if (currentPredictionError || !currentPredictionRecord?.order_id) {
           log.error({ error: currentPredictionError, replicateId: predictionId }, 'Critical: Failed to retrieve order_id for a successful Replicate prediction. Cannot save image.');
-          await supabaseAdmin.from('predictions').update({
-            status: 'failed',
-            error_message: 'Internal error: Succeeded in Replicate, but system failed to find associated order_id.',
-            updated_at: new Date().toISOString(),
-          }).eq('replicate_id', predictionId);
+          const updateDbPrediction = async () => {
+            await supabaseAdmin.from('predictions').update({
+              status: 'failed',
+              error_message: 'Internal error: Succeeded in Replicate, but system failed to find associated order_id.',
+              updated_at: new Date().toISOString(),
+            }).eq('replicate_id', predictionId);
+          };
+          await retryWithBackoff(updateDbPrediction, 3, 1000, 'update prediction status in DB');
           return NextResponse.json(prediction); 
         }
         orderIdToUse = currentPredictionRecord.order_id;
@@ -133,47 +182,160 @@ export async function GET(
 
         log.info({ path: restoredFilePath }, 'Uploading restored image to Supabase.');
 
-        const { data: uploadData, error: uploadError } = await supabaseAdmin.storage
-          .from('photos')
-          .upload(restoredFilePath, imageBuffer, { contentType });
+        const uploadImage = async () => {
+          const { data: uploadData, error: uploadError } = await supabaseAdmin.storage
+            .from('photos')
+            .upload(restoredFilePath, imageBuffer, { contentType });
+          return { uploadData, uploadError };
+        };
+        const { uploadData, uploadError } = await retryWithBackoff(uploadImage, 3, 1000, 'upload image to Supabase');
 
         if (uploadError) {
           log.error({ error: uploadError, path: restoredFilePath }, 'Supabase storage upload failed.');
-          await supabaseAdmin
-            .from('predictions')
-            .update({
-              status: 'failed', // Or 'upload_failed'
-              error_message: `Supabase storage upload failed: ${uploadError.message}`,
-              updated_at: new Date().toISOString(),
-            })
-            .eq('replicate_id', prediction.id);
+          const updateDbPrediction = async () => {
+            await supabaseAdmin
+              .from('predictions')
+              .update({
+                status: 'failed', // Or 'upload_failed'
+                error_message: `Supabase storage upload failed: ${uploadError.message}`,
+                updated_at: new Date().toISOString(),
+              })
+              .eq('replicate_id', prediction.id);
+          };
+          await retryWithBackoff(updateDbPrediction, 3, 1000, 'update prediction status in DB');
           // Still return the prediction, client can check DB for detailed status
           return NextResponse.json(prediction);
         }
 
         log.info({ uploadData, path: restoredFilePath }, 'Successfully uploaded restored image to Supabase.');
 
-        const { data: publicUrlData } = supabaseAdmin.storage
-          .from('photos')
-          .getPublicUrl(restoredFilePath);
+        const getPublicUrl = async () => {
+          const { data: publicUrlData } = supabaseAdmin.storage
+            .from('photos')
+            .getPublicUrl(restoredFilePath);
+          return publicUrlData;
+        };
+        const publicUrlData = await retryWithBackoff(getPublicUrl, 3, 1000, 'get public URL from Supabase');
 
-        await supabaseAdmin
-          .from('predictions')
-          .update({
-            status: 'succeeded',
-            output_image_url: publicUrlData.publicUrl,
-            updated_at: new Date().toISOString(),
-          })
-          .eq('replicate_id', prediction.id);
+        const finalRestoredImageUrl = publicUrlData.publicUrl;
+
+        const updateDbPrediction = async () => {
+          await supabaseAdmin
+            .from('predictions')
+            .update({
+              status: 'succeeded',
+              output_image_url: finalRestoredImageUrl, // Use the Supabase public URL
+              updated_at: new Date().toISOString(),
+            })
+            .eq('replicate_id', prediction.id);
+        };
+        await retryWithBackoff(updateDbPrediction, 3, 1000, 'update prediction status in DB');
 
         log.info({ prediction_id: prediction.id }, 'Successfully updated prediction with restored image URL.');
 
+        // --- Send Restoration Complete Email ---
+        try {
+          const orderId = dbPrediction?.order_id || orderIdToUse; // Prefer order_id from initial dbPrediction fetch
+          if (orderId) {
+            const fetchOrderData = async () => {
+              const { data: orderData, error: orderError } = await supabaseAdmin
+                .from('orders')
+                .select('id, customer_email, user_id, image_batch_id')
+                .eq('id', orderId)
+                .single();
+              return { orderData, orderError };
+            };
+            const { orderData, orderError } = await retryWithBackoff(fetchOrderData, 3, 1000, 'fetch order data from DB');
+
+            if (orderError || !orderData || !orderData.customer_email) {
+              log.error({ error: orderError, orderId }, 'Failed to fetch customer email from orders table.');
+            } else {
+              log.info({ orderId, email: orderData.customer_email }, 'Customer email fetched for restoration complete email.');
+
+              // Fetch all input_image_urls for this order_id from the predictions table
+              const fetchPredictionItems = async () => {
+                const { data: predictionItems, error: predictionItemsError } = await supabaseAdmin
+                  .from('predictions')
+                  .select('input_image_url')
+                  .eq('order_id', orderId)
+                  .not('input_image_url', 'is', null); // Ensure we only get records with an input image URL
+                return { predictionItems, predictionItemsError };
+              };
+              const { predictionItems, predictionItemsError } = await retryWithBackoff(fetchPredictionItems, 3, 1000, 'fetch prediction items from DB');
+
+              if (predictionItemsError) {
+                log.error({ error: predictionItemsError, orderId }, 'Failed to fetch original image URLs from predictions table.');
+                // Continue to send email, possibly without original image attachments
+              }
+
+              const originalImageUrls: string[] = predictionItems ? predictionItems.map(p => p.input_image_url).filter(Boolean) as string[] : [];
+
+              const attachments = [];
+
+              // Add restored image attachment (using restoredFilePath from earlier in the function)
+              if (restoredFilePath) { 
+                try {
+                  // Assuming 'photos' is the correct bucket name for restored images
+                  const restoredImgBuffer = await downloadFileAsBuffer('photos', restoredFilePath);
+                  attachments.push({
+                    content: restoredImgBuffer.toString('base64'),
+                    filename: restoredFilePath.split('/').pop() || 'restored_image.png',
+                    type: contentType || 'image/png', // contentType from earlier image processing
+                    disposition: 'attachment',
+                  });
+                } catch (e) { log.error({e, restoredFilePath}, 'Failed to prepare restored image attachment'); }
+              }
+
+              // Add original image attachments
+              for (const origUrl of originalImageUrls) {
+                if (!origUrl) continue; // Skip if any URL is null/undefined somehow
+                try {
+                  const pathDetails = getSupabaseStoragePathFromUrl(origUrl);
+                  if (pathDetails && pathDetails.bucketName && pathDetails.filePath) {
+                    const { bucketName: origBucketName, filePath: origFilePath } = pathDetails;
+                    const origImgBuffer = await downloadFileAsBuffer(origBucketName, origFilePath);
+                    attachments.push({
+                      content: origImgBuffer.toString('base64'),
+                      filename: origFilePath.split('/').pop() || 'original_image.jpg',
+                      type: 'image/jpeg', // Assuming original images are jpeg, adjust if needed
+                      disposition: 'attachment',
+                    });
+                  }
+                } catch (e) { log.error({e, origUrl}, 'Failed to prepare original image attachment'); }
+              }
+              
+              const dynamicData = {
+                customer_email: orderData.customer_email,
+                order_id: orderId,
+                view_restorations_url: `${serverConfig.app.url}/payment-success?batch_id=${orderData.image_batch_id || orderId}`,
+                original_image_url: dbPrediction?.input_image_url, // From initial fetch of prediction record
+                restored_image_url: finalRestoredImageUrl, // Public URL from Supabase storage
+                logo_url: `${serverConfig.app.url}/images/logo.png`
+              };
+
+              await sendRestorationCompleteEmail({
+                to: orderData.customer_email,
+                dynamicData,
+                attachments: attachments.length > 0 ? attachments : undefined,
+              });
+              log.info({ orderId, email: orderData.customer_email }, 'Restoration complete email sent.');
+            }
+          }
+        } catch (emailError) {
+          log.error({ emailError, prediction_id: prediction.id }, 'Failed to send restoration complete email.');
+        }
+        // --- End Send Email ---
+
         // Fetch the updated record from DB to return to client
-        const { data: updatedDbPrediction, error: fetchUpdatedError } = await supabaseAdmin
-          .from('predictions')
-          .select('replicate_id, status, output_image_url, error_message')
-          .eq('replicate_id', prediction.id)
-          .single();
+        const fetchUpdatedDbPrediction = async () => {
+          const { data: updatedDbPrediction, error: fetchUpdatedError } = await supabaseAdmin
+            .from('predictions')
+            .select('replicate_id, order_id, status, output_image_url, error_message, input_image_url') // ensure order_id is selected
+            .eq('replicate_id', prediction.id)
+            .single();
+          return { updatedDbPrediction, fetchUpdatedError };
+        };
+        const { updatedDbPrediction, fetchUpdatedError } = await retryWithBackoff(fetchUpdatedDbPrediction, 3, 1000, 'fetch updated prediction from DB');
 
         if (fetchUpdatedError) {
           log.error({ error: fetchUpdatedError }, 'Failed to fetch updated prediction from DB after storing image.');
@@ -198,13 +360,16 @@ export async function GET(
         return NextResponse.json(prediction);
       }
     } else if (prediction.status === 'failed' || prediction.status === 'canceled') {
-      await supabaseAdmin
-        .from('predictions')
-        .update({
-          status: prediction.status,
-          updated_at: new Date().toISOString(),
-        })
-        .eq('replicate_id', prediction.id);
+      const updateDbPrediction = async () => {
+        await supabaseAdmin
+          .from('predictions')
+          .update({
+            status: prediction.status,
+            updated_at: new Date().toISOString(),
+          })
+          .eq('replicate_id', prediction.id);
+      };
+      await retryWithBackoff(updateDbPrediction, 3, 1000, 'update prediction status in DB');
     }
 
     return NextResponse.json(prediction);

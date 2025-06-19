@@ -13,7 +13,7 @@ export default function TermsOfServicePage() {
           <h1 className="font-serif text-4xl lg:text-5xl font-normal text-brand-text mb-4">Terms of Service</h1>
           <div className="w-32 h-px bg-brand-secondary mx-auto mb-6"></div>
           <p className="text-xl text-brand-text/80 max-w-2xl mx-auto leading-relaxed">
-            These terms and conditions outline the rules and regulations for the use of RestoreClick's Website.
+            These terms and conditions outline the rules and regulations for the use of RestoreClick&apos;s Website.
           </p>
         </header>
 

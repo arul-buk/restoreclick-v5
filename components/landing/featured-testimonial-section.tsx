@@ -9,28 +9,28 @@ const testimonials = [
     id: 1,
     quote:
       "Seeing my grandmother's wedding photo, perfectly restored, brought tears to my eyes. It was like reliving that precious moment. RestoreClick truly gave me back a piece of my family's soul.",
-    name: "Sarah Mitchell",
-    location: "Portland, Oregon",
-    imageSrc: "/placeholder.svg",
-    supportingImageSrc: "/placeholder.jpg", // Updated image
+    name: "Elena Rodriguez",
+    location: "Austin, Texas",
+    imageSrc: "/images/midlady.png",
+    supportingImageSrc: "/images/midwoman.jpg", // Updated image
   },
   {
     id: 2,
     quote:
       "My father's military portrait from 1943 was severely damaged by water and time. The restoration brought back not just the image, but the dignity and pride in his eyes. It's now the centerpiece of our family room.",
-    name: "Michael Chen",
-    location: "San Francisco, California",
-    imageSrc: "/placeholder.svg",
-    supportingImageSrc: "/placeholder.svg",
+    name: "George Wilson",
+    location: "Nottingham, England",
+    imageSrc: "/images/armyson.png",
+    supportingImageSrc: "/images/armyfather.jpg",
   },
   {
     id: 3,
     quote:
       "Three generations of women in one photograph, nearly lost forever. RestoreClick's artisans didn't just restore the colors—they restored our connection to our heritage. Absolutely priceless work.",
-    name: "Elena Rodriguez",
-    location: "Austin, Texas",
-    imageSrc: "/placeholder.svg",
-    supportingImageSrc: "/placeholder.svg",
+    name: "Jarrah Williams",
+    location: "Melbourne, Australia",
+    imageSrc: "/images/lady.png",
+    supportingImageSrc: "/images/3gen.jpg",
   },
 ]
 

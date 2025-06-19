@@ -1,31 +1,88 @@
-This is a [Next.js](https://nextjs.org/) project bootstrapped with [`create-next-app`](https://github.com/vercel/next.js/tree/canary/packages/create-next-app).
+# RestoreClick - AI Photo Restoration Platform
+
+RestoreClick is a Next.js application designed to restore old and blurry photos using AI, and allow users to share their cherished memories.
+
+## Core Technologies
+
+- **Frontend**: Next.js, React, Tailwind CSS
+- **Backend**: Next.js API Routes
+- **Image Restoration**: Replicate API
+- **Database & Storage**: Supabase (PostgreSQL and S3-compatible storage)
+- **Payments**: Stripe
+- **Transactional Emails**: SendGrid
+- **Environment Management**: Doppler
 
 ## Getting Started
 
-First, run the development server:
+1.  **Clone the repository.**
+2.  **Set up Environment Variables with Doppler:**
+    - Ensure you have Doppler CLI installed and configured.
+    - Run `doppler setup` and connect to the RestoreClick project.
+    - Local development typically uses `doppler run -- npm run dev` to inject secrets.
+3.  **Install dependencies:**
+    ```bash
+    npm install
+    # or
+    yarn install
+    # or
+    pnpm install
+    ```
+4.  **Run the development server:**
+    ```bash
+    doppler run -- npm run dev
+    # or
+    doppler run -- yarn dev
+    # or
+    doppler run -- pnpm dev
+    ```
+    Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
 
-```bash
-npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
-```
+## Project Structure Highlights
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+### `/lib` Directory (Core Modules)
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+-   `config.public.ts` & `config.server.ts`: Manage public and server-side application configurations, sourcing values from environment variables (via Doppler).
+-   `logger.ts`: Handles application-wide logging.
+-   `sendgrid.ts`: Manages sending transactional emails (Order Confirmation, Restoration Complete, Share with Family) via SendGrid, using dynamic templates.
+-   `stripe.ts`: Contains Stripe client setup (if any direct client usage) and webhook logic is in `app/api/stripe/webhook/route.ts`.
+-   `supabaseAdmin.ts`: Initializes the Supabase admin client for server-side operations requiring elevated privileges.
+-   `supabase-utils.ts`: Provides utility functions for common Supabase interactions, such as parsing storage URLs (`getSupabaseStoragePathFromUrl`) and downloading files as buffers (`downloadFileAsBuffer`).
+-   `utils.ts`: General utility functions (currently includes `cn` for Tailwind CSS class name composition).
 
-This project uses [`next/font`](https://nextjs.org/docs/basic-features/font-optimization) to automatically optimize and load Inter, a custom Google Font.
+### `/app/api` Directory (Backend API Routes)
 
-## Learn More
+-   `app/api/share/email/route.ts`: Handles the "Send Photos to Family" feature. Authenticates the user, downloads original and restored images from Supabase, and sends them as email attachments via SendGrid.
+-   `app/api/stripe/webhook/route.ts`: Listens for Stripe events (specifically `checkout.session.completed`). Verifies webhook signatures, processes payment success, retrieves original images from Supabase, and triggers the Order Confirmation email via SendGrid with image attachments.
+-   `app/api/replicate/predictions/[id]/route.ts`: Manages polling/webhook events from Replicate for image restoration status. On successful restoration, it uploads the restored image to Supabase storage and triggers the Restoration Complete email via SendGrid, attaching both original and restored images.
+
+### Implemented Email Features
+
+All emails are sent using SendGrid and pre-defined templates (IDs managed in Doppler).
+
+1.  **Order Confirmation Email**:
+    -   **Trigger**: Successful payment via Stripe (`checkout.session.completed` event).
+    -   **Handler**: `app/api/stripe/webhook/route.ts`
+    -   **Attachments**: Original uploaded image(s).
+    -   **SendGrid Function**: `sendOrderConfirmationEmail` in `lib/sendgrid.ts`.
+
+2.  **Restoration Complete Email**:
+    -   **Trigger**: Successful image restoration by Replicate.
+    -   **Handler**: `app/api/replicate/predictions/[id]/route.ts`
+    -   **Attachments**: Original image(s) and Restored image(s).
+    -   **SendGrid Function**: `sendRestorationCompleteEmail` in `lib/sendgrid.ts`.
+
+3.  **Send Photos to Family Email**:
+    -   **Trigger**: User action from the frontend.
+    -   **Handler**: `app/api/share/email/route.ts`
+    -   **Attachments**: Selected original and restored image(s).
+    -   **SendGrid Function**: `sendPhotosToFamilyEmail` in `lib/sendgrid.ts`.
+
+## Learn More (Next.js)
 
 To learn more about Next.js, take a look at the following resources:
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
+-   [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
+-   [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
 
 You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js/) - your feedback and contributions are welcome!
 

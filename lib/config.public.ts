@@ -5,9 +5,6 @@
  */
 
 export const publicConfig = {
-    clerk: {
-      publishableKey: process.env.NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY || '',
-    },
     supabase: {
       url: process.env.NEXT_PUBLIC_SUPABASE_URL || '',
     },

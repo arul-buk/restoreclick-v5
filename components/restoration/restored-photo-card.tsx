@@ -3,7 +3,7 @@
 import Image from "next/image"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent } from "@/components/ui/card"
-import { Download } from "lucide-react"
+import { Share2 } from "lucide-react"
 
 interface RestoredPhotoCardProps {
   photo: {
@@ -13,11 +13,11 @@ interface RestoredPhotoCardProps {
     title: string
     description: string
   }
-  onDownloadClick: (src: string) => void
+  onShareClick: (beforeSrc: string, afterSrc: string) => void
   onImageClick: (beforeSrc: string, afterSrc: string, alt: string) => void // New prop
 }
 
-export default function RestoredPhotoCard({ photo, onDownloadClick, onImageClick }: RestoredPhotoCardProps) {
+export default function RestoredPhotoCard({ photo, onShareClick, onImageClick }: RestoredPhotoCardProps) {
   return (
     <Card className="overflow-hidden rounded-lg shadow-lg hover:shadow-xl transition-shadow duration-300">
       <CardContent className="p-0">
@@ -42,10 +42,10 @@ export default function RestoredPhotoCard({ photo, onDownloadClick, onImageClick
           <Button
             variant="outline"
             className="w-full text-brand-accent border-brand-accent hover:bg-brand-accent hover:text-white"
-            onClick={() => onDownloadClick(photo.afterSrc)}
+            onClick={() => onShareClick(photo.beforeSrc, photo.afterSrc)}
           >
-            <Download className="mr-2 h-4 w-4" />
-            Download
+            <Share2 className="mr-2 h-4 w-4" />
+            Share with Family
           </Button>
         </div>
       </CardContent>
