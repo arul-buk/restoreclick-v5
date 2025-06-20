@@ -1,16 +1,32 @@
-# RestoreClick - AI Photo Restoration Platform
+# RestoreClickV4 - AI Photo Restoration Platform
 
-RestoreClick is a Next.js application designed to restore old and blurry photos using AI, and allow users to share their cherished memories.
+RestoreClickV4 is a comprehensive Next.js application that uses AI to restore old and damaged photos, featuring Google Tag Manager integration, comprehensive analytics tracking, and a modern user experience.
 
-## Core Technologies
+## 🚀 Latest Updates
 
-- **Frontend**: Next.js, React, Tailwind CSS
-- **Backend**: Next.js API Routes
-- **Image Restoration**: Replicate API
-- **Database & Storage**: Supabase (PostgreSQL and S3-compatible storage)
-- **Payments**: Stripe
-- **Transactional Emails**: SendGrid
-- **Environment Management**: Doppler
+### ✅ Recently Completed
+- **Google Tag Manager Integration**: Complete analytics tracking across all user interactions
+- **Build Error Fixes**: Resolved TypeScript compilation errors and environment configuration
+- **Analytics Events**: Page views, user engagement, photo operations, purchases, and error tracking
+- **Payment Success Redesign**: Interactive before/after viewer with sharing capabilities
+- **Comprehensive Testing**: Unit tests, integration tests, and E2E testing framework
+
+### ⚠️ Current Status
+- **Build Status**: Compiles successfully with Next.js warnings (useSearchParams Suspense boundaries)
+- **Deployment Ready**: Core functionality working, optimization warnings remain
+- **Analytics Ready**: GTM integration complete, requires container configuration
+
+## 🛠 Core Technologies
+
+- **Frontend**: Next.js 14, React, TypeScript, Tailwind CSS
+- **Backend**: Next.js API Routes, Supabase Edge Functions
+- **AI Processing**: Replicate API for photo restoration
+- **Database & Storage**: Supabase (PostgreSQL + Storage)
+- **Payments**: Stripe with webhook integration
+- **Email**: SendGrid with template management
+- **Analytics**: Google Tag Manager integration
+- **Testing**: Vitest, Playwright for E2E testing
+- **Deployment**: Vercel-ready with environment configuration
 
 ## Getting Started
 
