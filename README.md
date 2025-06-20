@@ -1,6 +1,6 @@
-# RestoreClickV4 - AI Photo Restoration Platform
+# RestoreClickV5 - AI Photo Restoration Platform
 
-RestoreClickV4 is a comprehensive Next.js application that uses AI to restore old and damaged photos, featuring Google Tag Manager integration, comprehensive analytics tracking, and a modern user experience.
+RestoreClickV5 is a comprehensive Next.js application that uses AI to restore old and damaged photos, featuring Google Tag Manager integration, comprehensive analytics tracking, and a modern user experience.
 
 ## 🚀 Latest Updates
 
