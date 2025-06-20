@@ -1,7 +1,7 @@
 "use client"
 
 import type React from "react"
-import { useState } from "react"
+import { useState, Suspense } from "react"
 import Footer from "@/components/shared/footer"
 import SmoothScrollNav from "@/components/shared/smooth-scroll-nav"
 import FloatingHeader from "@/components/shared/floating-header"
@@ -23,7 +23,9 @@ export default function ClientLayout({
 
   return (
     <>
-      <GoogleTagManager />
+      <Suspense fallback={null}>
+        <GoogleTagManager />
+      </Suspense>
       <PWAServiceWorkerRegister />
       <FloatingHeader setIsMobileMenuOpen={setIsMobileMenuOpen} autoHide={shouldAutoHide} />
       {children}
