@@ -9,7 +9,7 @@ import { X, Mail, Loader2 } from 'lucide-react';
 interface EmailModalProps {
   isOpen: boolean;
   onClose: () => void;
-  onSend: (email: string, message?: string) => void;
+  onSend: (formData: { recipientEmail: string; message: string }) => void;
   isLoading: boolean;
 }
 
@@ -31,7 +31,7 @@ const EmailModal: React.FC<EmailModalProps> = ({
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     if (isFormValid && !isLoading) {
-      onSend(email, message);
+      onSend({ recipientEmail: email, message });
     }
   };
 

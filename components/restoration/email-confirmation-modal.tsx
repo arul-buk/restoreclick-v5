@@ -18,9 +18,11 @@ import { CheckCircle, XCircle } from "lucide-react";
 interface EmailConfirmationModalProps {
   isOpen: boolean;
   onClose: () => void;
-  onConfirm: (email: string) => void; // Simplified callback
+  onConfirmDownload: (email: string, targetSrcOrSrcs: string | string[]) => void;
   defaultEmail?: string;
-  // Dynamic text props
+  downloadTargetSrc?: string | null;
+  isDownloadingAll?: boolean;
+  allPhotoSrcs?: string[];
   title?: string;
   description?: string;
   buttonText?: string;
@@ -29,8 +31,11 @@ interface EmailConfirmationModalProps {
 const EmailConfirmationModal: React.FC<EmailConfirmationModalProps> = ({
   isOpen,
   onClose,
-  onConfirm,
+  onConfirmDownload,
   defaultEmail,
+  downloadTargetSrc,
+  isDownloadingAll,
+  allPhotoSrcs,
   title = "Confirm Your Email for Download", // Default title
   description,
   buttonText = "Download", // Default button text
@@ -87,7 +92,7 @@ const EmailConfirmationModal: React.FC<EmailConfirmationModalProps> = ({
     }
     // The modal's job is just to validate and pass the email up.
     // The parent component will handle the API call and submission state.
-    onConfirm(email);
+    onConfirmDownload(email, isDownloadingAll ? (allPhotoSrcs || []) : (downloadTargetSrc || ''));
   };
 
   return (

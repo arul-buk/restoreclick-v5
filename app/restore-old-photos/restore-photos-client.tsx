@@ -10,6 +10,7 @@ import { Alert, AlertDescription } from "@/components/ui/alert"
 import Image from "next/image"
 import { toast } from "sonner"
 import { loadStripe } from '@stripe/stripe-js'
+import logger from '@/lib/logger';
 
 interface UploadedFile {
   id: string
@@ -148,7 +149,8 @@ export default function RestorePhotosClient() {
         return;
       }
 
-      const { batchId } = await uploadResponse.json();
+      const { sessionId: batchId } = await uploadResponse.json();
+      logger.info({ batchId }, 'Received batchId from upload.');
       if (!batchId) {
         toast.error('Failed to get upload batch ID. Please try again.');
         setIsLoading(false);
@@ -157,6 +159,7 @@ export default function RestorePhotosClient() {
 
       toast.success("Photos successfully prepared! Proceeding to checkout...");
 
+      logger.info({ batchId }, 'Making request to /api/checkout.');
       // Step 2: Create Stripe Checkout session with batchId
       const response = await fetch('/api/checkout', {
         method: 'POST',
@@ -186,8 +189,8 @@ export default function RestorePhotosClient() {
         toast.error('Failed to get checkout session. Please try again.');
         throw new Error('Checkout session URL not found in response.');
       }
-    } catch (error) {
-      console.error('Checkout error:', error)
+    } catch (error: any) {
+      logger.error({ error_message: error.message, error_stack: error.stack }, 'Client-side checkout error.');
       toast.error('Failed to start checkout. Please try again.')
     } finally {
       setIsLoading(false)

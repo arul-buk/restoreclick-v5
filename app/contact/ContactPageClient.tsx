@@ -1,8 +1,9 @@
 "use client"
 
 import type React from "react"
+import { useState, useEffect } from "react"
+import { trackFormSubmission, trackPageView, trackError } from '@/lib/analytics';
 
-import { useState } from "react"
 import { Input } from "@/components/ui/input"
 import { Textarea } from "@/components/ui/textarea"
 import { Button } from "@/components/ui/button"
@@ -19,6 +20,10 @@ export default function ContactPageClient() {
   })
   const [status, setStatus] = useState<"idle" | "submitting" | "success" | "error">("idle")
   const [errorMessage, setErrorMessage] = useState<string | null>(null)
+
+  useEffect(() => {
+    trackPageView('Contact Page')
+  }, [])
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
     setFormData({
@@ -43,10 +48,13 @@ export default function ContactPageClient() {
     try {
       await new Promise((resolve) => setTimeout(resolve, 1500)) // Simulate network delay
       console.log("Form submitted:", formData)
+      trackFormSubmission('Contact Form', true)
       setStatus("success")
       setFormData({ name: "", email: "", message: "" }) // Clear form
     } catch (error) {
       console.error("Contact form submission failed:", error)
+      trackError('Contact Form Submission Failed', error instanceof Error ? error.message : 'Unknown error')
+      trackFormSubmission('Contact Form', false)
       setErrorMessage("Failed to send message. Please try again later.")
       setStatus("error")
     }
@@ -150,8 +158,8 @@ export default function ContactPageClient() {
               <h3 className="font-serif text-xl font-semibold text-brand-text mb-2">Other Ways to Reach Us</h3>
               <p className="text-lg text-brand-text/80">
                 If you prefer, you can also send us an email directly at{" "}
-                <a href="mailto:Support@restore.click" className="text-brand-cta hover:underline">
-                  Support@restore.click
+                <a href="mailto:lily@restore.click" className="text-brand-cta hover:underline">
+                  lily@restore.click
                 </a>
                 .
               </p>

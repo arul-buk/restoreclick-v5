@@ -7,12 +7,40 @@ import { Facebook, Instagram, Menu } from "lucide-react" // Import Menu icon
 
 interface FloatingHeaderProps {
   setIsMobileMenuOpen: (isOpen: boolean) => void // Prop to control mobile menu state
+  autoHide?: boolean // New prop to enable auto-hide functionality
 }
 
-export default function FloatingHeader({ setIsMobileMenuOpen }: FloatingHeaderProps) {
+export default function FloatingHeader({ setIsMobileMenuOpen, autoHide = false }: FloatingHeaderProps) {
+  const [isVisible, setIsVisible] = useState(true)
+  const [lastScrollY, setLastScrollY] = useState(0)
+
+  useEffect(() => {
+    if (!autoHide) return
+
+    const handleScroll = () => {
+      const currentScrollY = window.scrollY
+      
+      // Show header when scrolling up or at the top
+      if (currentScrollY < lastScrollY || currentScrollY < 10) {
+        setIsVisible(true)
+      } 
+      // Hide header when scrolling down and past threshold
+      else if (currentScrollY > lastScrollY && currentScrollY > 100) {
+        setIsVisible(false)
+      }
+      
+      setLastScrollY(currentScrollY)
+    }
+
+    window.addEventListener('scroll', handleScroll, { passive: true })
+    return () => window.removeEventListener('scroll', handleScroll)
+  }, [autoHide, lastScrollY])
+
   return (
     <header
-      className="fixed top-0 left-0 w-full z-50 transition-all duration-300 ease-in-out translate-y-0 opacity-100"
+      className={`fixed top-0 left-0 w-full z-50 transition-all duration-300 ease-in-out ${
+        isVisible ? 'translate-y-0 opacity-100' : '-translate-y-full opacity-0'
+      }`}
     >
       <div className="bg-background border-b border-brand-text/10 shadow-soft">
         <div className="container mx-auto px-6 h-16 flex items-center justify-between">

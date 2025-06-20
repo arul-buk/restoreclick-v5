@@ -1,19 +1,16 @@
-// app/api/stripe/webhook/route.ts
+// app/api/webhooks/stripe/route.ts
 import { NextRequest, NextResponse } from 'next/server';
 import Stripe from 'stripe';
-import { Readable } from 'stream';
-import supabaseAdmin from '@/lib/supabaseAdmin'; // For server-side operations
-import { sendOrderConfirmationEmail } from '@/lib/sendgrid';
-import { downloadFileAsBuffer, getSupabaseStoragePathFromUrl } from '@/lib/supabase-utils';
+import { getOrCreateCustomer } from '@/lib/db/customers';
+import { createOrder, getOrderByPaymentIntent } from '@/lib/db/orders';
+import { createRestorationJob } from '@/lib/db/restoration-jobs';
+import { queueEmail } from '@/lib/db/email-queue';
+import { storageService } from '@/lib/storage/storage-service';
+import { triggerRestorationForOrder } from '@/lib/restoration/trigger';
 import logger from '@/lib/logger';
+import { retryDatabaseOperation } from '@/lib/utils/retry';
 import { serverConfig } from '@/lib/config.server';
-import Replicate from 'replicate';
-import { v4 as uuidv4 } from 'uuid';
-
-// Initialize Replicate client
-const replicate = new Replicate({
-  auth: process.env.REPLICATE_API_TOKEN, // Ensure REPLICATE_API_TOKEN is set in your environment
-});
+import { trackPurchase } from '@/lib/analytics';
 
 const stripe = new Stripe(serverConfig.stripe.secretKey, {
   apiVersion: '2025-05-28.basil',
@@ -21,26 +18,17 @@ const stripe = new Stripe(serverConfig.stripe.secretKey, {
 
 const relevantEvents = new Set([
   'checkout.session.completed',
-  // Add other events you might want to handle, e.g., 'payment_intent.succeeded'
 ]);
 
-async function buffer(readable: Readable) {
-  const chunks = [];
-  for await (const chunk of readable) {
-    chunks.push(typeof chunk === 'string' ? Buffer.from(chunk) : chunk);
-  }
-  return Buffer.concat(chunks);
-}
-
 export async function POST(req: NextRequest) {
-  const rawBody = await buffer(req.body as unknown as Readable);
+  const rawBody = await req.text();
   const sig = req.headers.get('stripe-signature');
   const webhookSecret = serverConfig.stripe.webhookSecret;
   let event: Stripe.Event;
 
   if (!sig || !webhookSecret) {
-    logger.error('Stripe webhook secret or signature missing.');
-    return NextResponse.json({ error: 'Webhook secret not configured.' }, { status: 400 });
+    logger.error('Stripe webhook secret or signature missing');
+    return NextResponse.json({ error: 'Webhook secret not configured' }, { status: 400 });
   }
 
   try {
@@ -54,195 +42,229 @@ export async function POST(req: NextRequest) {
     try {
       switch (event.type) {
         case 'checkout.session.completed':
-          const session = event.data.object as Stripe.Checkout.Session;
-          logger.info({ sessionId: session.id }, 'Checkout session completed event received.');
-
-          const customerEmail = session.customer_details?.email;
-          const batchId = session.metadata?.batch_id; 
-          const totalAmountPaid = session.amount_total ? session.amount_total / 100 : 0;
-          const paymentIntentId = typeof session.payment_intent === 'string' ? session.payment_intent : session.payment_intent?.id;
-          let listData: { name: string; id: string; updated_at: string; created_at: string; last_accessed_at: string; metadata: Record<string, any>; }[] | null = null;
-
-          if (!customerEmail) {
-            logger.error('Customer email not found in checkout session.');
-            return NextResponse.json({ error: 'Customer email missing.' }, { status: 400 });
-          }
-          if (!batchId) {
-            logger.error('Batch ID not found in checkout session metadata.');
-            return NextResponse.json({ error: 'Batch ID missing.' }, { status: 400 });
-          }
-          if (!paymentIntentId) {
-            logger.error('Payment Intent ID not found in checkout session.');
-            return NextResponse.json({ error: 'Payment Intent ID missing.' }, { status: 400 });
-          }
-
-          // 1. IDEMPOTENCY CHECK
-          try {
-            const { data: existingOrder, error: checkOrderError } = await supabaseAdmin
-              .from('orders')
-              .select('id')
-              .eq('stripe_payment_intent_id', paymentIntentId)
-              .maybeSingle();
-
-            if (checkOrderError) {
-              logger.error({ error: checkOrderError, paymentIntentId }, 'Error checking for existing order.');
-              return NextResponse.json({ error: 'Failed to check for existing order.' }, { status: 500 });
-            }
-
-            if (existingOrder) {
-              logger.info({ paymentIntentId, orderId: existingOrder.id }, 'Duplicate checkout.session.completed event. Order already exists. Skipping.');
-              return NextResponse.json({ received: true, message: 'Order already processed.' });
-            }
-          } catch (e) {
-              logger.error({ error: e, paymentIntentId }, 'Exception during existing order check.');
-              return NextResponse.json({ error: 'Internal server error during order check.' }, { status: 500 });
-          }
-
-          // 2. CREATE ORDER (if not existing)
-          const { data: newOrder, error: insertOrderError } = await supabaseAdmin
-            .from('orders')
-            .insert([
-              {
-                image_batch_id: batchId,
-                customer_email: customerEmail,
-                stripe_payment_intent_id: paymentIntentId,
-                amount: totalAmountPaid, // Changed from total_amount
-                currency: session.currency?.toUpperCase(),
-                status: 'completed',
-              },
-            ])
-            .select('id, customer_email, image_batch_id, stripe_payment_intent_id, amount, currency, status') // Select specific fields
-            .single();
-
-          if (insertOrderError || !newOrder) {
-            logger.error({ error: insertOrderError, batchId, paymentIntentId }, 'Failed to insert order into database.');
-            return NextResponse.json({ error: 'Failed to create order in database.' }, { status: 500 });
-          }
-
-          logger.info({ orderId: newOrder.id, batchId }, 'Order successfully created in database.');
-
-          // 3. INITIATE REPLICATE PREDICTIONS
-          try {
-            const { data: storageListData, error: listError } = await supabaseAdmin.storage
-              .from('photos')
-              .list(`temporary-uploads/${batchId}`, { sortBy: { column: 'name', order: 'asc' } });
-
-            if (listError) {
-              logger.error({ error: listError, batchId, orderId: newOrder.id }, 'Error listing temporary images from storage for Replicate.');
-              // Continue to email, but predictions might not be created.
-            } else {
-              listData = storageListData; // Assign to higher scoped variable
-            }
-            
-            if (listData && listData.length > 0) {
-              const predictionPromises = listData.map(async (file) => {
-                const originalImagePath = `temporary-uploads/${batchId}/${file.name}`;
-                const { data: publicUrlData } = supabaseAdmin.storage
-                  .from('photos')
-                  .getPublicUrl(originalImagePath);
-                
-                const inputImageUrl = publicUrlData.publicUrl;
-                if (!inputImageUrl) {
-                    logger.error({originalImagePath, orderId: newOrder.id}, "Failed to get public URL for Replicate input image");
-                    return null; 
-                }
-                logger.info({ inputImageUrl, orderId: newOrder.id }, 'Initiating Replicate prediction for image.');
-
-                const replicatePrediction = await replicate.predictions.create({
-                  model: 'flux-kontext-apps/restore-image',
-                  input: { input_image: inputImageUrl },
-                });
-
-                const { error: predictionInsertError } = await supabaseAdmin
-                  .from('predictions')
-                  .insert({
-                    id: uuidv4(),
-                    order_id: newOrder.id, // Link to the order created in this webhook
-                    replicate_id: replicatePrediction.id,
-                    input_image_url: inputImageUrl,
-                    status: replicatePrediction.status,
-                  });
-
-                if (predictionInsertError) {
-                  logger.error({ error: predictionInsertError, orderId: newOrder.id, replicateId: replicatePrediction.id }, 'Error inserting prediction into DB.');
-                } else {
-                    logger.info({ predictionId: replicatePrediction.id, orderId: newOrder.id }, "Prediction record inserted.")
-                }
-                return replicatePrediction;
-              });
-              await Promise.all(predictionPromises.filter(p => p !== null));
-              logger.info({ orderId: newOrder.id }, 'All Replicate predictions initiated and records inserted (or attempted).');
-            } else {
-              logger.warn({ batchId, orderId: newOrder.id }, 'No temporary images found for batchId to initiate Replicate predictions.');
-            }
-          } catch (replicateError) {
-            logger.error({ error: replicateError, orderId: newOrder.id }, 'Error initiating Replicate predictions.');
-          }
-
-          // 4. SEND ORDER CONFIRMATION EMAIL
-          const { data: finalPredictionImages, error: finalPredictionImagesError } = await supabaseAdmin
-            .from('predictions')
-            .select('input_image_url')
-            .eq('order_id', newOrder.id) // Query by the actual order ID (UUID)
-            .not('input_image_url', 'is', null);
-
-          if (finalPredictionImagesError) {
-            logger.error({ error: finalPredictionImagesError, orderId: newOrder.id }, 'Failed to fetch original image URLs from predictions table for order confirmation.');
-          }
-
-          const finalOriginalImageUrls: string[] = finalPredictionImages ? finalPredictionImages.map(p => p.input_image_url).filter(url => url) : [];
-          if (finalOriginalImageUrls.length === 0 && listData && listData.length > 0) { // only warn if we expected images
-            logger.warn({ orderId: newOrder.id }, 'No original image URLs found in predictions for order confirmation email, though images were processed for Replicate.');
-          }
-
-          const attachments = [];
-          for (const imageUrl of finalOriginalImageUrls) {
-            try {
-              const pathDetails = getSupabaseStoragePathFromUrl(imageUrl);
-              if (pathDetails && pathDetails.bucketName && pathDetails.filePath) {
-                const { bucketName, filePath } = pathDetails;
-                const imageBuffer = await downloadFileAsBuffer(bucketName, filePath);
-                attachments.push({
-                  content: imageBuffer.toString('base64'),
-                  filename: filePath.split('/').pop() || 'original_image.jpg',
-                  type: 'image/jpeg', 
-                  disposition: 'attachment',
-                });
-              } else {
-                logger.warn({ imageUrl, orderId: newOrder.id }, "Could not derive path details for email attachment.")
-              }
-            } catch (downloadError) {
-              logger.error({ downloadError, imageUrl, orderId: newOrder.id }, 'Failed to download or prepare image attachment for order confirmation.');
-            }
-          }
-
-          const dynamicData = {
-            customer_email: newOrder.customer_email, // Use email from newOrder for consistency
-            order_id: newOrder.id, // Use the actual order ID (UUID)
-            order_date: new Date(session.created * 1000).toLocaleDateString(),
-            total_amount_paid: `$${(newOrder.amount || 0).toFixed(2)} ${newOrder.currency || ''}`,
-            number_of_photos: finalOriginalImageUrls.length,
-            payment_intent_id: newOrder.stripe_payment_intent_id,
-          };
-
-          await sendOrderConfirmationEmail({
-            to: newOrder.customer_email as string,
-            dynamicData: dynamicData,
-            attachments: attachments.length > 0 ? attachments : undefined,
-          });
-
-          logger.info({ orderId: newOrder.id, customerEmail: newOrder.customer_email }, 'Order confirmation email sent.');
+          await handleCheckoutSessionCompleted(event.data.object as Stripe.Checkout.Session);
           break;
 
         default:
           logger.warn(`Unhandled relevant event type: ${event.type}`);
       }
     } catch (error) {
-      logger.error({ error, eventType: event.type }, 'Error handling Stripe event.');
-      // Consider if a 500 response is more appropriate here for unhandled errors within the try block
-      // return NextResponse.json({ error: 'Internal server error handling event.' }, { status: 500 });
+      logger.error({ error, eventType: event.type }, 'Error handling Stripe event');
+      return NextResponse.json({ error: 'Internal server error handling event' }, { status: 500 });
     }
   }
 
   return NextResponse.json({ received: true });
+}
+
+async function handleCheckoutSessionCompleted(session: Stripe.Checkout.Session) {
+  const log = logger.child({ sessionId: session.id });
+  log.info('Processing checkout session completed event');
+
+  // Extract session data
+  const customerEmail = session.customer_details?.email;
+  const sessionId = session.metadata?.batch_id;
+  log.debug({ metadata: session.metadata, extractedSessionId: sessionId }, 'Stripe session metadata and extracted session ID');
+  const totalAmountPaid = session.amount_total ? session.amount_total / 100 : 0;
+  const paymentIntentId = typeof session.payment_intent === 'string' 
+    ? session.payment_intent 
+    : session.payment_intent?.id;
+
+  // Validate required data
+  if (!customerEmail) {
+    log.error('Customer email not found in checkout session');
+    throw new Error('Customer email missing');
+  }
+  if (!sessionId) {
+    log.error('Session ID not found in checkout session metadata');
+    throw new Error('Session ID missing');
+  }
+  if (!paymentIntentId) {
+    log.error('Payment Intent ID not found in checkout session');
+    throw new Error('Payment Intent ID missing');
+  }
+
+  // 1. IDEMPOTENCY CHECK
+  const existingOrder = await getOrderByPaymentIntent(paymentIntentId);
+  
+  if (existingOrder) {
+    log.info({ 
+      paymentIntentId, 
+      orderId: existingOrder.id 
+    }, 'Duplicate checkout.session.completed event. Order already exists. Skipping');
+    return;
+  }
+
+  // 2. GET OR CREATE CUSTOMER
+  const customer = await getOrCreateCustomer(customerEmail, {
+    name: session.customer_details?.name || undefined,
+    phone: session.customer_details?.phone || undefined,
+    metadata: {
+      stripe_customer_id: session.customer,
+      checkout_session_id: session.id
+    }
+  });
+
+  log.info({ customerId: customer.id, email: customerEmail }, 'Customer processed');
+
+  // 3. CREATE ORDER
+  const order = await createOrder({
+    customerId: customer.id,
+    stripePaymentIntentId: paymentIntentId,
+    stripeCheckoutSessionId: session.id,
+    totalAmount: totalAmountPaid,
+    currency: session.currency?.toUpperCase() || 'USD',
+    paymentMethod: session.payment_method_types?.[0] || 'card',
+    metadata: {
+      session_id: sessionId,
+      stripe_session_id: session.id,
+      customer_details: session.customer_details
+    }
+  });
+
+  log.info({ orderId: order.id, orderNumber: order.order_number }, 'Order created successfully');
+
+  // 4. MOVE IMAGES FROM TEMPORARY TO PERMANENT STORAGE
+  try {
+    const moveResults = await storageService.moveToOriginals(sessionId, order.id);
+    
+    if (moveResults.length === 0) {
+      log.warn({ sessionId, orderId: order.id }, 'No images found to move from temporary storage');
+    } else {
+      log.info({ 
+        orderId: order.id, 
+        imageCount: moveResults.length 
+      }, 'Images moved to permanent storage successfully');
+    }
+
+    // Track purchase completion
+    trackPurchase(order.id, totalAmountPaid, session.currency?.toUpperCase() || 'USD', moveResults.length);
+
+    // 5. CREATE RESTORATION JOBS
+    for (const moveResult of moveResults) {
+      try {
+        const restorationJob = await createRestorationJob({
+          originalImageId: moveResult.imageId,
+          inputParameters: {
+            input_image: moveResult.publicUrl,
+            model: process.env.REPLICATE_MODEL || 'flux-kontext-apps/restore-image',
+            seed: Math.floor(Math.random() * 1000000),
+            output_format: process.env.REPLICATE_OUTPUT_FORMAT || 'png',
+            safety_tolerance: parseInt(process.env.REPLICATE_SAFETY_TOLERANCE || '0')
+          },
+          metadata: {
+            order_id: order.id,
+            original_path: moveResult.originalPath,
+            moved_from_session: sessionId,
+            original_image_url: moveResult.publicUrl
+          }
+        });
+
+        log.info({ 
+          jobId: restorationJob.id, 
+          imageId: moveResult.imageId 
+        }, 'Restoration job created');
+
+      } catch (jobError) {
+        log.error({ 
+          error: jobError, 
+          imageId: moveResult.imageId 
+        }, 'Failed to create restoration job');
+      }
+    }
+
+    // 5.5. TRIGGER RESTORATION PROCESSING
+    // Trigger restoration worker to process the pending jobs immediately
+    log.info({ orderId: order.id }, 'Triggering restoration worker to process pending jobs');
+    await triggerRestorationForOrder(order.id);
+    
+    // 6. QUEUE ORDER CONFIRMATION EMAIL
+    await queueEmail({
+      orderId: order.id,
+      emailType: 'order_confirmation',
+      toEmail: customerEmail,
+      toName: customer.name || 'Valued customer',
+      subject: `Order Confirmation - ${order.order_number}`,
+      sendgridTemplateId: process.env.SENDGRID_ORDER_CONFIRMATION_TEMPLATE_ID,
+      dynamicData: {
+        customer_name: customer.name || 'Valued customer',
+        customer_email: customerEmail,
+        order_id: order.order_number,
+        order_date: new Date().toLocaleDateString(),
+        total_amount_paid: `$${totalAmountPaid.toFixed(2)} ${order.currency}`,
+        number_of_photos: moveResults.length,
+        payment_intent_id: paymentIntentId,
+        // Include image URLs for template
+        input_image_urls: moveResults.map(r => r.publicUrl)
+      },
+      // Prepare attachments - original images
+      attachments: await prepareImageAttachments(moveResults.map(r => r.publicUrl))
+    });
+
+    log.info({ 
+      orderId: order.id, 
+      customerEmail 
+    }, 'Order confirmation email queued successfully');
+
+  } catch (storageError) {
+    log.error({ 
+      error: storageError, 
+      sessionId, 
+      orderId: order.id 
+    }, 'Error processing images and creating jobs');
+    
+    // Still queue email even if image processing fails
+    await queueEmail({
+      orderId: order.id,
+      emailType: 'order_confirmation',
+      toEmail: customerEmail,
+      toName: customer.name || 'Valued customer',
+      subject: `Order Confirmation - ${order.order_number}`,
+      sendgridTemplateId: process.env.SENDGRID_ORDER_CONFIRMATION_TEMPLATE_ID,
+      dynamicData: {
+        customer_name: customer.name || 'Valued customer',
+        customer_email: customerEmail,
+        order_id: order.order_number,
+        order_date: new Date().toLocaleDateString(),
+        total_amount_paid: `$${totalAmountPaid.toFixed(2)} ${order.currency}`,
+        number_of_photos: 0,
+        payment_intent_id: paymentIntentId
+      }
+    });
+  }
+
+  log.info({ orderId: order.id }, 'Checkout session processing completed successfully');
+}
+
+async function prepareImageAttachments(imageUrls: string[]): Promise<Array<{
+  filename: string;
+  content: string;
+  type: string;
+  disposition: string;
+}>> {
+  const attachments = [];
+
+  for (const imageUrl of imageUrls) {
+    try {
+      // Download image from public URL
+      const response = await fetch(imageUrl);
+      if (!response.ok) {
+        throw new Error(`Failed to fetch image: ${response.statusText}`);
+      }
+      
+      const imageBuffer = await response.arrayBuffer();
+      const base64Content = Buffer.from(imageBuffer).toString('base64');
+      
+      attachments.push({
+        content: base64Content,
+        filename: imageUrl.split('/').pop() || 'original_image.jpg',
+        type: 'image/jpeg',
+        disposition: 'attachment',
+      });
+    } catch (downloadError) {
+      logger.error({ downloadError, imageUrl }, 'Failed to prepare image attachment');
+    }
+  }
+
+  return attachments;
 }

@@ -1,8 +1,16 @@
+'use client';
+
 import Image from "next/image"
 import { Button } from "@/components/ui/button"
-import Link from "next/link" // Import Link from next/link
+import Link from "next/link"
+import { useEffect } from "react"
+import { trackPageView, trackEngagement } from "@/lib/analytics"
 
 export default function EditorialHeroSection() {
+  useEffect(() => {
+    trackPageView('/');
+  }, []);
+
   return (
     <section className="relative min-h-screen flex items-center overflow-hidden">
       {/* Full bleed background image */}
@@ -37,6 +45,7 @@ export default function EditorialHeroSection() {
                 size="lg" 
                 className="relative z-10 w-full sm:w-auto px-10 py-6 text-lg font-semibold bg-gradient-to-r from-emerald-500 to-teal-600 hover:from-emerald-600 hover:to-teal-700 text-white rounded-xl shadow-lg hover:shadow-xl hover:scale-105 transition-all duration-300 transform-gpu overflow-hidden"
                 asChild
+                onClick={() => trackEngagement('hero_cta_click', { button: 'Begin Your Restoration' })}
               >
                 <Link href="/restore-old-photos">
                   <span className="relative z-10 flex items-center justify-center gap-2">

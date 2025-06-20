@@ -7,8 +7,6 @@ const replicate = new Replicate({
   auth: process.env.REPLICATE_API_TOKEN!,
 });
 
-
-
 export async function POST(req: NextRequest) {
   const log = logger.child({ api_route: 'POST /api/replicate/initiate-restoration' });
   log.info('Received request to initiate image restoration.');
@@ -25,17 +23,40 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: 'No photo URLs provided' }, { status: 400 });
     }
 
+    const useRealReplicate = process.env.REPLICATE_TEST_STATUS === 'TRUE';
+
     const predictionPromises = photoUrls.map((url: string, index: number) => {
       log.info({ photoUrl: url, index }, 'Starting prediction for image.');
-      return replicate.predictions.create({
-        model: 'flux-kontext-apps/restore-image',
-        input: {
-          input_image: url,
-        },
-      }).then((newPrediction) => {
-        log.info({ replicate_id: newPrediction.id, input_image_url: url }, 'Successfully created Replicate prediction.');
-        return newPrediction;
-      });
+      
+      if (useRealReplicate) {
+        // Use real Replicate API
+        log.info({ photoUrl: url, index }, 'Using real Replicate API');
+        return replicate.predictions.create({
+          model: process.env.REPLICATE_MODEL || 'flux-kontext-apps/restore-image',
+          input: {
+            input_image: url,
+            seed: Math.floor(Math.random() * 1000000),
+            output_format: process.env.REPLICATE_OUTPUT_FORMAT || 'png',
+            safety_tolerance: parseInt(process.env.REPLICATE_SAFETY_TOLERANCE || '0')
+          }
+        }).then((newPrediction) => {
+          log.info({ replicate_id: newPrediction.id, input_image_url: url }, 'Successfully created Replicate prediction.');
+          return newPrediction;
+        });
+      } else {
+        // Use mock response for testing
+        log.info({ photoUrl: url, index }, 'Using mock Replicate response for testing');
+        const mockPrediction = {
+          id: `mock_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
+          status: 'succeeded',
+          output: `${process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3001'}/images/showcase-scratches-after.png`,
+          urls: {
+            get: `https://api.replicate.com/v1/predictions/mock_${Date.now()}`
+          }
+        };
+        log.info({ replicate_id: mockPrediction.id, input_image_url: url }, 'Successfully created mock Replicate prediction.');
+        return Promise.resolve(mockPrediction);
+      }
     });
 
     const initialPredictions = await Promise.all(predictionPromises);
@@ -44,12 +65,10 @@ export async function POST(req: NextRequest) {
     const predictionRecords = initialPredictions.map((p: any) => ({
       replicate_id: p.id,
       status: p.status,
-      input_image_url: p.input.input_image,
+      input_image_url: p.input?.input_image || '',
       order_id: orderId,
       created_at: new Date(p.created_at).toISOString(),
       version: p.version,
-
-
     }));
 
     const { error: insertError, data: dbRecords } = await supabaseAdmin

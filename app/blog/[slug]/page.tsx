@@ -58,7 +58,7 @@ export default async function BlogPostPage({ params }: { params: { slug: string 
   const formattedDate = format(new Date(post.date), 'MMMM d, yyyy')
 
   return (
-    <div className="min-h-screen bg-brand-background py-12 px-4 sm:px-6 lg:px-8">
+    <div className="min-h-screen bg-brand-background py-20 px-4 sm:px-6 lg:px-8">
       <article className="max-w-3xl mx-auto">
         {/* Back to blog link */}
         <div className="mb-8">

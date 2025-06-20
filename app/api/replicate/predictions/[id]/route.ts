@@ -177,7 +177,7 @@ export async function GET(
         const fileId = uuidv4();
         const today = new Date().toISOString().split('T')[0];
         const newFilename = `${today}_${orderIdToUse.substring(0, 8)}_${fileId.substring(0, 8)}${extension}`;
-        const restoredFilePath = `restored/${orderIdToUse}/${newFilename}`;
+        const restoredFilePath = `uploads/restored/${orderIdToUse}/${newFilename}`;
         log.info({ restoredFilePath }, 'Constructed Supabase file path for restored image.');
 
         log.info({ path: restoredFilePath }, 'Uploading restored image to Supabase.');
@@ -233,98 +233,26 @@ export async function GET(
 
         log.info({ prediction_id: prediction.id }, 'Successfully updated prediction with restored image URL.');
 
-        // --- Send Restoration Complete Email ---
-        try {
-          const orderId = dbPrediction?.order_id || orderIdToUse; // Prefer order_id from initial dbPrediction fetch
-          if (orderId) {
-            const fetchOrderData = async () => {
-              const { data: orderData, error: orderError } = await supabaseAdmin
-                .from('orders')
-                .select('id, customer_email, user_id, image_batch_id')
-                .eq('id', orderId)
-                .single();
-              return { orderData, orderError };
-            };
-            const { orderData, orderError } = await retryWithBackoff(fetchOrderData, 3, 1000, 'fetch order data from DB');
+        // Check if all predictions for this order are complete
+        if (orderIdToUse) {
+          try {
+            // Trigger order completion check which will send email if all images are done
+            const checkResponse = await fetch(`${serverConfig.app.url}/api/check-order-completion`, {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({ orderId: orderIdToUse })
+            });
 
-            if (orderError || !orderData || !orderData.customer_email) {
-              log.error({ error: orderError, orderId }, 'Failed to fetch customer email from orders table.');
+            if (checkResponse.ok) {
+              const result = await checkResponse.json();
+              log.info({ orderId: orderIdToUse, result }, 'Order completion check result');
             } else {
-              log.info({ orderId, email: orderData.customer_email }, 'Customer email fetched for restoration complete email.');
-
-              // Fetch all input_image_urls for this order_id from the predictions table
-              const fetchPredictionItems = async () => {
-                const { data: predictionItems, error: predictionItemsError } = await supabaseAdmin
-                  .from('predictions')
-                  .select('input_image_url')
-                  .eq('order_id', orderId)
-                  .not('input_image_url', 'is', null); // Ensure we only get records with an input image URL
-                return { predictionItems, predictionItemsError };
-              };
-              const { predictionItems, predictionItemsError } = await retryWithBackoff(fetchPredictionItems, 3, 1000, 'fetch prediction items from DB');
-
-              if (predictionItemsError) {
-                log.error({ error: predictionItemsError, orderId }, 'Failed to fetch original image URLs from predictions table.');
-                // Continue to send email, possibly without original image attachments
-              }
-
-              const originalImageUrls: string[] = predictionItems ? predictionItems.map(p => p.input_image_url).filter(Boolean) as string[] : [];
-
-              const attachments = [];
-
-              // Add restored image attachment (using restoredFilePath from earlier in the function)
-              if (restoredFilePath) { 
-                try {
-                  // Assuming 'photos' is the correct bucket name for restored images
-                  const restoredImgBuffer = await downloadFileAsBuffer('photos', restoredFilePath);
-                  attachments.push({
-                    content: restoredImgBuffer.toString('base64'),
-                    filename: restoredFilePath.split('/').pop() || 'restored_image.png',
-                    type: contentType || 'image/png', // contentType from earlier image processing
-                    disposition: 'attachment',
-                  });
-                } catch (e) { log.error({e, restoredFilePath}, 'Failed to prepare restored image attachment'); }
-              }
-
-              // Add original image attachments
-              for (const origUrl of originalImageUrls) {
-                if (!origUrl) continue; // Skip if any URL is null/undefined somehow
-                try {
-                  const pathDetails = getSupabaseStoragePathFromUrl(origUrl);
-                  if (pathDetails && pathDetails.bucketName && pathDetails.filePath) {
-                    const { bucketName: origBucketName, filePath: origFilePath } = pathDetails;
-                    const origImgBuffer = await downloadFileAsBuffer(origBucketName, origFilePath);
-                    attachments.push({
-                      content: origImgBuffer.toString('base64'),
-                      filename: origFilePath.split('/').pop() || 'original_image.jpg',
-                      type: 'image/jpeg', // Assuming original images are jpeg, adjust if needed
-                      disposition: 'attachment',
-                    });
-                  }
-                } catch (e) { log.error({e, origUrl}, 'Failed to prepare original image attachment'); }
-              }
-              
-              const dynamicData = {
-                customer_email: orderData.customer_email,
-                order_id: orderId,
-                view_restorations_url: `${serverConfig.app.url}/payment-success?batch_id=${orderData.image_batch_id || orderId}`,
-                original_image_url: dbPrediction?.input_image_url, // From initial fetch of prediction record
-                restored_image_url: finalRestoredImageUrl, // Public URL from Supabase storage
-                logo_url: `${serverConfig.app.url}/images/logo.png`
-              };
-
-              await sendRestorationCompleteEmail({
-                to: orderData.customer_email,
-                dynamicData,
-                attachments: attachments.length > 0 ? attachments : undefined,
-              });
-              log.info({ orderId, email: orderData.customer_email }, 'Restoration complete email sent.');
+              log.error({ orderId: orderIdToUse, status: checkResponse.status }, 'Failed to check order completion');
             }
+          } catch (error) {
+            log.error({ error, orderId: orderIdToUse }, 'Error checking order completion');
           }
-        } catch (emailError) {
-          log.error({ emailError, prediction_id: prediction.id }, 'Failed to send restoration complete email.');
         }
-        // --- End Send Email ---
 
         // Fetch the updated record from DB to return to client
         const fetchUpdatedDbPrediction = async () => {

@@ -1,6 +1,46 @@
-'use client';
+"use client";
 
-import React from 'react';
+import { motion, AnimatePresence } from "framer-motion";
+import { Lightbulb, Sparkles, Heart } from "lucide-react";
+import { useEffect } from "react";
+import { trackEngagement } from "@/lib/analytics";
+
+// This is our custom animated icon that "fills up" with color to show progress.
+const AnimatedRestorationIcon = () => {
+  return (
+    <svg
+      width="80"
+      height="80"
+      viewBox="0 0 80 80"
+      fill="none"
+      xmlns="http://www.w3.org/2000/svg"
+    >
+      {/* The faded background circle */}
+      <circle cx="40" cy="40" r="38" stroke="#A98B71" strokeWidth="4" opacity="0.3" />
+      
+      {/* The animated, colored circle that "fills" from bottom to top */}
+      <motion.g
+        clipPath="url(#clip)"
+      >
+        <circle cx="40" cy="40" r="38" stroke="#C8745A" strokeWidth="4" fill="#C8745A" fillOpacity="0.2" />
+      </motion.g>
+
+      {/* The mask that reveals the colored circle */}
+      <defs>
+        <clipPath id="clip">
+          <motion.rect
+            x="0"
+            y="80"
+            width="80"
+            height="80"
+            animate={{ y: [80, 0] }}
+            transition={{ duration: 1.5, repeat: Infinity, ease: "easeInOut" }}
+          />
+        </clipPath>
+      </defs>
+    </svg>
+  );
+};
 
 interface ProcessingOverlayProps {
   totalImages: number;
@@ -8,7 +48,6 @@ interface ProcessingOverlayProps {
   completedImages: number;
   elapsedTime: number;
   maxTime: number;
-  onCancel?: () => void;
 }
 
 const ProcessingOverlay: React.FC<ProcessingOverlayProps> = ({
@@ -17,11 +56,18 @@ const ProcessingOverlay: React.FC<ProcessingOverlayProps> = ({
   completedImages,
   elapsedTime,
   maxTime,
-  onCancel
 }) => {
   const timeRemaining = Math.max(0, maxTime - elapsedTime);
   const progress = Math.min(100, (elapsedTime / maxTime) * 100);
   const completionProgress = totalImages > 0 ? (completedImages / totalImages) * 100 : 0;
+
+  // Track processing engagement
+  useEffect(() => {
+    trackEngagement('processing_started', { 
+      total_images: totalImages,
+      current_image: currentImage 
+    });
+  }, [totalImages, currentImage]);
 
   const formatTime = (milliseconds: number): string => {
     const seconds = Math.floor(milliseconds / 1000);
@@ -30,139 +76,68 @@ const ProcessingOverlay: React.FC<ProcessingOverlayProps> = ({
     return `${minutes}:${remainingSeconds.toString().padStart(2, '0')}`;
   };
 
-  const getProgressColor = () => {
-    if (timeRemaining <= 30000) return 'bg-red-500'; // Last 30 seconds
-    if (timeRemaining <= 60000) return 'bg-yellow-500'; // Last minute
-    return 'bg-blue-600'; // Normal
-  };
-
-  const getProgressMessage = () => {
-    if (completedImages === totalImages) {
-      return "All photos processed successfully!";
-    }
-    if (timeRemaining <= 30000) {
-      return "Almost done! Please continue waiting...";
-    }
-    if (timeRemaining <= 60000) {
-      return "Processing is taking a bit longer than expected...";
-    }
-    return "We're carefully restoring your photos with AI technology.";
-  };
-
   return (
-    <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
-      <div className="bg-white rounded-lg p-8 max-w-md w-full shadow-2xl">
-        {/* Header */}
-        <div className="text-center mb-6">
-          <div className="w-16 h-16 mx-auto mb-4 bg-blue-100 rounded-full flex items-center justify-center">
-            <svg className="w-8 h-8 text-blue-600 animate-spin" fill="none" viewBox="0 0 24 24">
-              <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
-              <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
-            </svg>
+    <AnimatePresence>
+      <motion.div
+        initial={{ opacity: 0 }}
+        animate={{ opacity: 1 }}
+        exit={{ opacity: 0 }}
+        className="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-50"
+      >
+        <motion.div
+          initial={{ scale: 0.9, y: 20 }}
+          animate={{ scale: 1, y: 0 }}
+          exit={{ scale: 0.9, y: 20, opacity: 0 }}
+          transition={{ type: "spring", stiffness: 300, damping: 30 }}
+          className="w-full max-w-md rounded-2xl bg-brand-background p-8 shadow-2xl text-center"
+        >
+          <div className="mx-auto mb-6">
+            <AnimatedRestorationIcon />
           </div>
-          <h2 className="text-2xl font-bold text-gray-900 mb-2">Processing Your Photos</h2>
-          <p className="text-gray-600 text-sm">
-            Please don't leave this page while we restore your precious memories.
-          </p>
-        </div>
 
-        {/* Progress Message */}
-        <div className="mb-6 text-center">
-          <p className="text-gray-700 font-medium mb-2">{getProgressMessage()}</p>
-          <p className="text-sm text-gray-500">
-            {completedImages > 0 ? (
-              <>Completed {completedImages} of {totalImages} photos</>
-            ) : (
-              <>Processing photo {currentImage} of {totalImages}</>
-            )}
+          <h2 className="font-serif text-3xl font-bold text-brand-text">
+            Bringing Your Memories to Life...
+          </h2>
+          <p className="mt-2 text-brand-text/70">
+            This may take a few moments. It's best to keep this page open while I work.
           </p>
-        </div>
 
-        {/* Completion Progress Bar */}
-        {totalImages > 1 && (
-          <div className="mb-4">
-            <div className="flex justify-between text-sm text-gray-600 mb-1">
-              <span>Overall Progress</span>
-              <span>{Math.round(completionProgress)}%</span>
+          <div className="my-8 w-full">
+            {/* Simplified Progress Section */}
+            <div className="flex justify-between items-center mb-2 text-brand-text">
+              <span className="font-semibold">Overall Progress</span>
+              <span className="font-mono font-bold">{Math.round(completionProgress)}%</span>
             </div>
-            <div className="w-full bg-gray-200 rounded-full h-2">
-              <div 
-                className="bg-green-600 h-2 rounded-full transition-all duration-300"
-                style={{ width: `${completionProgress}%` }}
+            <div className="w-full h-4 rounded-full bg-brand-secondary/20 overflow-hidden">
+              <motion.div
+                className="h-full rounded-full bg-brand-cta"
+                initial={{ width: 0 }}
+                animate={{ width: `${completionProgress}%` }}
+                transition={{ ease: "linear", duration: 0.5 }}
               />
             </div>
+            <p className="mt-4 text-sm text-brand-text/60">
+              Restoring photo {currentImage} of {totalImages}...
+            </p>
           </div>
-        )}
 
-        {/* Time Progress Bar */}
-        <div className="mb-4">
-          <div className="flex justify-between text-sm text-gray-600 mb-1">
-            <span>Current Photo</span>
-            <span>{Math.round(progress)}%</span>
-          </div>
-          <div className="w-full bg-gray-200 rounded-full h-2">
-            <div 
-              className={`h-2 rounded-full transition-all duration-300 ${getProgressColor()}`}
-              style={{ width: `${progress}%` }}
-            />
-          </div>
-        </div>
-
-        {/* Time Information */}
-        <div className="flex justify-between text-sm text-gray-600 mb-6">
-          <span>Time elapsed: {formatTime(elapsedTime)}</span>
-          <span>Time remaining: {formatTime(timeRemaining)}</span>
-        </div>
-
-        {/* Warning for long processing */}
-        {timeRemaining <= 30000 && timeRemaining > 0 && (
-          <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-3 mb-4">
-            <div className="flex items-center">
-              <svg className="w-5 h-5 text-yellow-600 mr-2" fill="currentColor" viewBox="0 0 20 20">
-                <path fillRule="evenodd" d="M8.257 3.099c.765-1.36 2.722-1.36 3.486 0l5.58 9.92c.75 1.334-.213 2.98-1.742 2.98H4.42c-1.53 0-2.493-1.646-1.743-2.98l5.58-9.92zM11 13a1 1 0 11-2 0 1 1 0 012 0zm-1-8a1 1 0 00-1 1v3a1 1 0 002 0V6a1 1 0 00-1-1z" clipRule="evenodd" />
-              </svg>
-              <p className="text-sm text-yellow-800">
-                Processing is taking longer than expected. This can happen with complex restorations. Please continue waiting...
-              </p>
+          {/* Reassuring "While you wait" box */}
+          <div className="rounded-lg bg-brand-accent/10 p-4 text-left border border-brand-accent/20">
+            <div className="flex items-center text-brand-accent">
+              <Lightbulb className="h-5 w-5 mr-3 flex-shrink-0" />
+              <h3 className="font-semibold">A little magic is happening:</h3>
             </div>
+            <ul className="mt-2 ml-8 list-disc text-brand-text/80 space-y-1 text-sm">
+              <li>My AI is carefully finding the original colors.</li>
+              <li>It's mending cracks, tears, and scratches.</li>
+              <li>The wait is worth it for the best results!</li>
+            </ul>
           </div>
-        )}
 
-        {/* Timeout Warning */}
-        {timeRemaining === 0 && (
-          <div className="bg-red-50 border border-red-200 rounded-lg p-3 mb-4">
-            <div className="flex items-center">
-              <svg className="w-5 h-5 text-red-600 mr-2" fill="currentColor" viewBox="0 0 20 20">
-                <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM8.707 7.293a1 1 0 00-1.414 1.414L8.586 10l-1.293 1.293a1 1 0 101.414 1.414L10 11.414l1.293 1.293a1 1 0 001.414-1.414L11.414 10l1.293-1.293a1 1 0 00-1.414-1.414L10 8.586 8.707 7.293z" clipRule="evenodd" />
-              </svg>
-              <p className="text-sm text-red-800">
-                This photo is taking longer than expected to process. You can continue waiting or try again later.
-              </p>
-            </div>
-          </div>
-        )}
-
-        {/* Tips */}
-        <div className="bg-blue-50 border border-blue-200 rounded-lg p-3 mb-6">
-          <h4 className="text-sm font-medium text-blue-800 mb-1">💡 While you wait:</h4>
-          <ul className="text-xs text-blue-700 space-y-1">
-            <li>• Our AI is analyzing every detail of your photo</li>
-            <li>• Complex damage takes longer to restore properly</li>
-            <li>• The wait is worth it for the best results!</li>
-          </ul>
-        </div>
-
-        {/* Cancel Button */}
-        {onCancel && (
-          <button
-            onClick={onCancel}
-            className="w-full py-2 px-4 border border-gray-300 rounded-md text-gray-700 hover:bg-gray-50 transition-colors duration-200"
-          >
-            Cancel Processing
-          </button>
-        )}
-      </div>
-    </div>
+        
+        </motion.div>
+      </motion.div>
+    </AnimatePresence>
   );
 };
 

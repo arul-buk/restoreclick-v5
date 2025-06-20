@@ -23,28 +23,48 @@ const InteractiveViewer: React.FC<InteractiveViewerProps> = ({ photo }) => {
     }
   };
 
+  const handleMouseLeave = () => {
+    setSliderPosition(50);
+  };
+
+  const handleTouchMove = (e: React.TouchEvent<HTMLDivElement>) => {
+    if (containerRef.current) {
+      const rect = containerRef.current.getBoundingClientRect();
+      const x = e.touches[0].clientX - rect.left;
+      const percentage = Math.max(0, Math.min(100, (x / rect.width) * 100));
+      setSliderPosition(percentage);
+    }
+  };
+
+  const handleTouchEnd = () => {
+    setSliderPosition(50);
+  };
+
   return (
     <div 
       ref={containerRef}
-      className="relative w-full h-96 md:h-[500px] overflow-hidden rounded-lg bg-gray-100 shadow-lg cursor-ew-resize"
+      className="relative w-full h-72 sm:h-80 md:h-96 lg:h-[500px] xl:h-[600px] 2xl:h-[700px] overflow-hidden cursor-col-resize select-none bg-gray-100 rounded-lg shadow-lg"
       onMouseMove={handleMouseMove}
+      onMouseLeave={handleMouseLeave}
+      onTouchMove={handleTouchMove}
+      onTouchEnd={handleTouchEnd}
     >
-      {/* Before image (background) */}
+      {/* Restored image (background) */}
       <img 
-        src={photo.originalUrl} 
-        alt="Original photo"
+        src={photo.restoredUrl} 
+        alt="Restored photo"
         className="absolute inset-0 w-full h-full object-contain select-none"
         draggable={false}
       />
       
-      {/* After image (clipped) */}
+      {/* Original image (clipped) */}
       <div 
         className="absolute inset-0 overflow-hidden" 
         style={{ clipPath: `inset(0 ${100 - sliderPosition}% 0 0)` }}
       >
         <img 
-          src={photo.restoredUrl} 
-          alt="Restored photo"
+          src={photo.originalUrl} 
+          alt="Original photo"
           className="w-full h-full object-contain select-none"
           draggable={false}
         />

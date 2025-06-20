@@ -1,10 +1,11 @@
 "use client"
-import { useState, useMemo } from "react"
+import { useState, useMemo, useEffect } from "react"
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "@/components/ui/accordion"
 import { Input } from "@/components/ui/input" // Import Input component
 import { Search } from "lucide-react" // Import Search icon
 import Link from "next/link"
 import React from "react"
+import { trackPageView, trackEngagement } from '@/lib/analytics';
 
 interface FaqItem {
   value: string;
@@ -58,13 +59,13 @@ const faqItems: FaqItem[] = [
   },
   {
     value: "item-7",
-    question: "What if I&apos;m not happy with the restored photo?",
+    question: "What if I'm not happy with the restored photo?",
     answer:
       "Your happiness is our top priority! If for any reason you are not completely satisfied, simply reply to the email in which you received the photos and tell us what you'd like to adjust. Our team will manually work on the image to fine-tune it for you. We genuinely will not let you go unhappy!",
   },
   {
     value: "item-8",
-    question: "What if I&apos;m still not happy after you&apos;ve tried to fix it?",
+    question: "What if I'm still not happy after you've tried to fix it?",
     answer:
       "We are committed to your complete satisfaction. In the rare event that you are still not happy after our team has manually adjusted the photo, we will provide you with a full refund, no questions asked. We believe your memories are priceless, and you should only pay if you are truly delighted.",
   },
@@ -119,6 +120,10 @@ export default function FaqPageClient() {
     )
   }, [searchTerm])
 
+  useEffect(() => {
+    trackPageView('/faq');
+  }, []);
+
   return (
     <div className="bg-brand-background text-brand-text min-h-screen py-16 pt-28">
       <div className="container mx-auto px-6 max-w-3xl">
@@ -147,7 +152,11 @@ export default function FaqPageClient() {
           <Accordion type="single" collapsible className="w-full">
             {filteredFaqItems.map((item) => (
               <AccordionItem key={item.value} value={item.value}>
-                <AccordionTrigger>{item.question}</AccordionTrigger>
+                <AccordionTrigger 
+                  onClick={() => trackEngagement('faq_expand', { question: item.question })}
+                >
+                  {item.question}
+                </AccordionTrigger>
                 <AccordionContent>{item.answer}</AccordionContent>
               </AccordionItem>
             ))}

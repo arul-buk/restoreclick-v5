@@ -1,9 +1,9 @@
 "use client";
 
+import React from 'react';
 import { Button } from '@/components/ui/button';
-import { Download, Share2, Mail, Archive, Loader2 } from 'lucide-react';
-import JSZip from 'jszip';
-import { saveAs } from 'file-saver';
+import { Download, Share2, Mail, Loader2 } from 'lucide-react';
+import { trackPhotoDownload } from '@/lib/analytics';
 
 interface ActionPanelProps {
   activePhoto: { id: string; restoredUrl: string };
@@ -28,86 +28,56 @@ const ActionPanel: React.FC<ActionPanelProps> = ({
       const response = await fetch(activePhoto.restoredUrl);
       if (!response.ok) throw new Error('Failed to fetch photo');
       
-      const blob = await response.blob();
-      const extension = activePhoto.restoredUrl.split('.').pop() || 'jpg';
-      const filename = `restored-photo-${currentIndex}.${extension}`;
+      const arrayBuffer = await response.arrayBuffer();
+      // Create blob with explicit PNG MIME type
+      const blob = new Blob([arrayBuffer], { type: 'image/png' });
+      const filename = `restored-photo-${Date.now()}-${currentIndex}.png`;
       
-      saveAs(blob, filename);
+      // Create download link
+      const url = URL.createObjectURL(blob);
+      const link = document.createElement('a');
+      link.href = url;
+      link.download = filename;
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+      URL.revokeObjectURL(url);
+      
+      // Track download
+      trackPhotoDownload('single', 1);
     } catch (error) {
       console.error('Error downloading photo:', error);
       // Fallback: open in new tab
-
-    }
-  };
-
-  const handleDownloadAll = async () => {
-    try {
-      const zip = new JSZip();
-      
-      // Fetch each image and add to zip
-      for (let i = 0; i < allPhotos.length; i++) {
-        const photo = allPhotos[i];
-        try {
-          const response = await fetch(photo.restoredUrl);
-          if (!response.ok) throw new Error(`Failed to fetch photo ${i + 1}`);
-          
-          const blob = await response.blob();
-          const extension = photo.restoredUrl.split('.').pop() || 'jpg';
-          zip.file(`restored-photo-${i + 1}.${extension}`, blob);
-        } catch (error) {
-          console.error(`Error downloading photo ${i + 1}:`, error);
-          // Continue with other photos
-        }
-      }
-      
-      // Generate and download zip
-      const content = await zip.generateAsync({ type: 'blob' });
-      saveAs(content, 'restored-photos.zip');
-    } catch (error) {
-      console.error('Error creating ZIP file:', error);
-      // You might want to show a toast notification here
+      window.open(activePhoto.restoredUrl, '_blank');
     }
   };
 
   return (
-    <div className="bg-white rounded-lg shadow-lg p-6 space-y-6">
+    <div className="bg-white rounded-lg shadow-lg p-4 sm:p-6 space-y-4 sm:space-y-6">
       {/* Photo Index */}
       <div className="text-center">
-        <h3 className="text-lg font-semibold text-gray-900">
+        <h3 className="text-base sm:text-lg font-semibold text-gray-900">
           Restored Photo {currentIndex} of {totalPhotos}
         </h3>
       </div>
 
       {/* Action Buttons */}
-      <div className="space-y-3">
+      <div className="space-y-2 sm:space-y-3">
         {/* Download This Photo */}
         <Button 
           onClick={handleDownloadSingle}
-          className="w-full" 
+          className="w-full text-sm sm:text-base" 
           size="lg"
         >
           <Download className="w-4 h-4 mr-2" />
           Download This Photo
         </Button>
 
-        {/* Download All Photos (only show if multiple photos) */}
-        {allPhotos.length > 1 && (
-          <Button 
-            onClick={handleDownloadAll}
-            variant="outline" 
-            className="w-full" 
-            size="lg"
-          >
-            <Archive className="w-4 h-4 mr-2" />
-            Download All Photos (.zip)
-          </Button>
-        )}
-
         {/* Share with Family */}
         <Button 
           onClick={onShareClick}
           variant="outline" 
-          className="w-full" 
+          className="w-full text-sm sm:text-base" 
           size="lg"
         >
           <Share2 className="w-4 h-4 mr-2" />
@@ -118,7 +88,7 @@ const ActionPanel: React.FC<ActionPanelProps> = ({
         <Button 
           onClick={onSendToMyEmailClick}
           variant="outline" 
-          className="w-full" 
+          className="w-full text-sm sm:text-base" 
           size="lg"
           disabled={isLoading}
         >
@@ -132,11 +102,11 @@ const ActionPanel: React.FC<ActionPanelProps> = ({
       </div>
 
       {/* Tips Section */}
-      <div className="bg-gray-50 rounded-lg p-4 text-sm text-gray-600">
+      <div className="bg-gray-50 rounded-lg p-3 sm:p-4 text-xs sm:text-sm text-gray-600">
         <h4 className="font-medium text-gray-900 mb-2">💡 Tips:</h4>
         <ul className="space-y-1">
           <li>• Use the slider above to compare before and after</li>
-          <li>• Click thumbnails below to view different photos</li>
+          {allPhotos.length > 1 && <li>• Click thumbnails below to view different photos</li>}
           <li>• Share with family to spread the joy!</li>
         </ul>
       </div>

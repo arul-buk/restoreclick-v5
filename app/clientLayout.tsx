@@ -18,11 +18,14 @@ export default function ClientLayout({
   const pathname = usePathname()
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false)
 
+  // Determine if auto-hide should be enabled for specific pages
+  const shouldAutoHide = pathname === '/payment-success' || pathname.startsWith('/blog')
+
   return (
     <>
       <GoogleTagManager />
       <PWAServiceWorkerRegister />
-      <FloatingHeader setIsMobileMenuOpen={setIsMobileMenuOpen} />
+      <FloatingHeader setIsMobileMenuOpen={setIsMobileMenuOpen} autoHide={shouldAutoHide} />
       {children}
       {pathname === "/" && <SmoothScrollNav />}
       <MobileMenu isOpen={isMobileMenuOpen} setIsOpen={setIsMobileMenuOpen} />

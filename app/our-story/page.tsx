@@ -20,7 +20,7 @@ export default function OurStoryPage() {
           />
         <div className="absolute inset-0 flex items-center justify-center">
           <div className="container mx-auto px-6 text-center text-white">
-            <h2 className="font-serif text-3xl font-normal text-brand-text mb-4">Let's Restore Your Memories</h2>
+            <h2 className="font-serif text-3xl font-normal text-white mb-4">Let's Restore Your Memories</h2>
           </div>
         </div>
       </section>
@@ -122,7 +122,7 @@ export default function OurStoryPage() {
               not a technical process, but an act of preservation. My commitment is to bring that same level of
               dedication and artistry to your family&apos;s legacy.&quot;
             </p>
-            <p className="text-lg text-brand-text/80 leading-relaxed">Our process is a blend of cutting-edge AI and meticulous human artistry. We don&apos;t believe in a &quot;one-click&quot; fix. Each photo is assessed and restored by a real person, ensuring the final result is not just technically perfect, but emotionally resonant. We&apos;re committed to ethical restoration, preserving the original character of your memories while gently healing the damage of time.</p>
+            <p className="text-lg text-brand-text/80 leading-relaxed">Our process is a blend of cutting-edge AI and meticulous human artistry. We don&apos;t believe in a &quot;one-click&quot; fix. Each photo is enhanced and restored by our cuttin edge technology and addressed by a real person, when needed, ensuring the final result is not just technically perfect, but emotionally resonant. We&apos;re committed to ethical restoration, preserving the original character of your memories while gently healing the damage of time.</p>
             <div className="mt-4">
               <Image
                 src="/images/lilysign.png"

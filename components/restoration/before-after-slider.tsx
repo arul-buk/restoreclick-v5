@@ -21,16 +21,28 @@ export default function BeforeAfterSlider({ beforeSrc, afterSrc, alt }: BeforeAf
       if (!isDragging || !containerRef.current) return
 
       const { left, width } = containerRef.current.getBoundingClientRect()
-      let clientX = e.clientX
-
-      // Adjust for touch events if needed (though this is MouseEvent)
-      if (e.type === "touchmove" && (e as unknown as TouchEvent).touches) {
-        clientX = (e as unknown as TouchEvent).touches[0].clientX
-      }
+      const clientX = e.clientX
 
       let newPosition = ((clientX - left) / width) * 100
       newPosition = Math.max(0, Math.min(100, newPosition)) // Clamp between 0 and 100
       setSliderPosition(newPosition)
+    },
+    [isDragging],
+  )
+
+  const handleTouchMove = useCallback(
+    (e: TouchEvent) => {
+      if (!isDragging || !containerRef.current) return
+
+      const { left, width } = containerRef.current.getBoundingClientRect()
+      const clientX = e.touches[0].clientX
+
+      let newPosition = ((clientX - left) / width) * 100
+      newPosition = Math.max(0, Math.min(100, newPosition)) // Clamp between 0 and 100
+      setSliderPosition(newPosition)
+      
+      // Prevent scrolling while dragging
+      e.preventDefault()
     },
     [isDragging],
   )
@@ -49,22 +61,22 @@ export default function BeforeAfterSlider({ beforeSrc, afterSrc, alt }: BeforeAf
     if (isDragging) {
       window.addEventListener("mousemove", handleMouseMove)
       window.addEventListener("mouseup", handleMouseUp)
-      window.addEventListener("touchmove", handleMouseMove, { passive: false }) // passive: false for preventDefault
+      window.addEventListener("touchmove", handleTouchMove, { passive: false }) // passive: false for preventDefault
       window.addEventListener("touchend", handleMouseUp)
     } else {
       window.removeEventListener("mousemove", handleMouseMove)
       window.removeEventListener("mouseup", handleMouseUp)
-      window.removeEventListener("touchmove", handleMouseMove)
+      window.removeEventListener("touchmove", handleTouchMove)
       window.removeEventListener("touchend", handleMouseUp)
     }
 
     return () => {
       window.removeEventListener("mousemove", handleMouseMove)
       window.removeEventListener("mouseup", handleMouseUp)
-      window.removeEventListener("touchmove", handleMouseMove)
+      window.removeEventListener("touchmove", handleTouchMove)
       window.removeEventListener("touchend", handleMouseUp)
     }
-  }, [isDragging, handleMouseMove, handleMouseUp])
+  }, [isDragging, handleMouseMove, handleMouseUp, handleTouchMove])
 
   return (
     <div
@@ -74,11 +86,11 @@ export default function BeforeAfterSlider({ beforeSrc, afterSrc, alt }: BeforeAf
       onTouchStart={handleMouseDown}
     >
       {/* Before Image */}
-      <Image src={afterSrc || "/placeholder.svg"} alt={`After: ${alt}`} fill className="object-cover select-none" />
+      <Image src={beforeSrc || "/placeholder.svg"} alt={`Before: ${alt}`} fill className="object-cover select-none" />
 
       {/* After Image (clipped) */}
       <div className="absolute inset-0 overflow-hidden" style={{ clipPath: `inset(0 ${100 - sliderPosition}% 0 0)` }}>
-        <Image src={beforeSrc || "/placeholder.svg"} alt={`Before: ${alt}`} fill className="object-cover select-none" />
+        <Image src={afterSrc || "/placeholder.svg"} alt={`After: ${alt}`} fill className="object-cover select-none" />
       </div>
 
       {/* Slider Handle */}

@@ -28,8 +28,8 @@ export interface PollingConfig {
   onError?: (error: Error) => void;
 }
 
-const INITIAL_POLL_INTERVAL = 1000; // Start with 1 second
-const MAX_POLL_INTERVAL = 10000; // Cap at 10 seconds
+const INITIAL_POLL_INTERVAL = 60000; // Start with 60 seconds (1 minute)
+const MAX_POLL_INTERVAL = 60000; // Cap at 60 seconds (1 minute)
 const BACKOFF_MULTIPLIER = 1.5; // Increase interval by 50% each time
 const MAX_POLL_DURATION_PER_IMAGE = 300000; // 5 minutes per image
 
