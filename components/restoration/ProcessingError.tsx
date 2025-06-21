@@ -42,58 +42,39 @@ const ProcessingError: React.FC<ProcessingErrorProps> = ({
   };
 
   return (
-    <div className="bg-red-50 border border-red-200 rounded-lg p-6 mb-6">
+    <div className="bg-brand-background border border-brand-text/20 rounded-lg p-6 mb-6">
       {/* Error Icon and Title */}
       <div className="flex items-start">
         <div className="flex-shrink-0">
-          <svg className="w-6 h-6 text-red-600" fill="currentColor" viewBox="0 0 20 20">
+          <svg className="w-6 h-6 text-brand-text" fill="currentColor" viewBox="0 0 20 20">
             <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM8.707 7.293a1 1 0 00-1.414 1.414L8.586 10l-1.293 1.293a1 1 0 101.414 1.414L10 11.414l1.293 1.293a1 1 0 001.414-1.414L11.414 10l1.293-1.293a1 1 0 00-1.414-1.414L10 8.586 8.707 7.293z" clipRule="evenodd" />
           </svg>
         </div>
         <div className="ml-3 flex-1">
-          <h3 className="text-lg font-semibold text-red-800 mb-2">
-            Processing Issues Encountered
+          <h3 className="font-serif text-lg font-semibold text-brand-text">
+            Processing Issues Detected
           </h3>
-          <p className="text-red-700 mb-2 font-medium">
+          <p className="text-brand-text/80 mt-1">
             {getErrorMessage()}
           </p>
-          <p className="text-red-600 text-sm mb-4">
+        </div>
+      </div>
+
+      {/* Error Details */}
+      <div className="mt-4 ml-9">
+        <div className="bg-white rounded-md p-4 border border-brand-text/20">
+          <p className="text-brand-text/80 mb-3">
             {getErrorDescription()}
           </p>
-
-          {/* Detailed Breakdown */}
-          {(hasTimeouts || hasFailures) && (
-            <div className="bg-white rounded-md p-3 mb-4 border border-red-200">
-              <h4 className="text-sm font-medium text-red-800 mb-2">Issue Details:</h4>
-              <div className="space-y-2 text-sm">
-                {hasTimeouts && (
-                  <div className="flex items-center text-orange-700">
-                    <svg className="w-4 h-4 mr-2" fill="currentColor" viewBox="0 0 20 20">
-                      <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm1-12a1 1 0 10-2 0v4a1 1 0 00.293.707l2.828 2.829a1 1 0 101.415-1.415L11 9.586V6z" clipRule="evenodd" />
-                    </svg>
-                    <span>{timedOutImages.length} photo(s) exceeded the 2-minute processing limit</span>
-                  </div>
-                )}
-                {hasFailures && (
-                  <div className="flex items-center text-red-700">
-                    <svg className="w-4 h-4 mr-2" fill="currentColor" viewBox="0 0 20 20">
-                      <path fillRule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7 4a1 1 0 11-2 0 1 1 0 012 0zm-1-9a1 1 0 00-1 1v4a1 1 0 102 0V6a1 1 0 00-1-1z" clipRule="evenodd" />
-                    </svg>
-                    <span>{failedImages.length} photo(s) encountered processing errors</span>
-                  </div>
-                )}
-              </div>
-            </div>
-          )}
-
-          {/* Suggestions */}
-          <div className="bg-blue-50 border border-blue-200 rounded-md p-3 mb-4">
-            <h4 className="text-sm font-medium text-blue-800 mb-2">💡 Suggestions:</h4>
-            <ul className="text-xs text-blue-700 space-y-1">
+          
+          {/* Troubleshooting Steps */}
+          <div className="mb-4">
+            <h4 className="font-semibold text-brand-text mb-2">What you can try:</h4>
+            <ul className="text-sm text-brand-text/70 space-y-1">
               {hasTimeouts && (
                 <>
-                  <li>• Try again - sometimes processing is faster on retry</li>
-                  <li>• Very damaged photos may need multiple attempts</li>
+                  <li>• Wait a moment and try again - the service may be busy</li>
+                  <li>• Try uploading smaller or less damaged photos first</li>
                 </>
               )}
               {hasFailures && (
@@ -111,7 +92,7 @@ const ProcessingError: React.FC<ProcessingErrorProps> = ({
             <button
               onClick={onRetry}
               disabled={isRetrying}
-              className="flex-1 px-4 py-2 bg-red-600 text-white rounded-md hover:bg-red-700 disabled:bg-red-400 disabled:cursor-not-allowed transition-colors duration-200 flex items-center justify-center"
+              className="flex-1 px-4 py-2 bg-brand-text text-white rounded-md hover:bg-brand-text/90 disabled:bg-brand-text/50 disabled:cursor-not-allowed transition-colors duration-200 flex items-center justify-center"
             >
               {isRetrying ? (
                 <>
@@ -132,7 +113,7 @@ const ProcessingError: React.FC<ProcessingErrorProps> = ({
             </button>
             <button
               onClick={onContinue}
-              className="flex-1 px-4 py-2 border border-gray-300 rounded-md text-gray-700 hover:bg-gray-50 transition-colors duration-200 flex items-center justify-center"
+              className="flex-1 px-4 py-2 border border-brand-text/20 rounded-md text-brand-text hover:bg-brand-background transition-colors duration-200 flex items-center justify-center"
             >
               <svg className="w-4 h-4 mr-2" fill="currentColor" viewBox="0 0 20 20">
                 <path fillRule="evenodd" d="M7.293 14.707a1 1 0 010-1.414L10.586 10 7.293 6.707a1 1 0 011.414-1.414l4 4a1 1 0 010 1.414l-4 4a1 1 0 01-1.414 0z" clipRule="evenodd" />
@@ -142,13 +123,12 @@ const ProcessingError: React.FC<ProcessingErrorProps> = ({
           </div>
 
           {/* Support Contact */}
-          <div className="mt-4 pt-4 border-t border-red-200">
-            <p className="text-xs text-red-600">
+          <div className="mt-4 pt-4 border-t border-brand-text/20">
+            <p className="text-xs text-brand-text/70">
               Still having issues? 
-              <a href="/contact" className="ml-1 underline hover:text-red-800">
+              <a href="/contact" className="ml-1 underline hover:text-brand-text">
                 Contact our support team
               </a>
-              {" "}for personalized help.
             </p>
           </div>
         </div>

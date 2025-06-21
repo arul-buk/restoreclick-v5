@@ -47,7 +47,7 @@ export default function PaymentPageClient() {
       <div className="w-full max-w-lg">
         <div className="text-center mb-8">
           <h1 className="font-serif text-4xl font-normal text-brand-text mb-2">Secure Checkout</h1>
-          <p className="text-sm text-gray-500 mt-2">Your card will be charged only after you&apos;ve reviewed and approved the restorations.</p>
+          <p className="text-sm text-brand-text/60 mt-2">Your card will be charged only after you&apos;ve reviewed and approved the restorations.</p>
         </div>
 
         {/* Mock-up Disclaimer */}

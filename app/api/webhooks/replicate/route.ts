@@ -160,6 +160,43 @@ async function handleJobSuccess(job: any, prediction: any, log: any) {
 
     const restoredImageUrl = publicUrlData.publicUrl;
 
+    // Create restored image record in database
+    const { data: restoredImageData, error: imageError } = await supabaseAdmin
+      .from('images')
+      .insert({
+        order_id: orderId,
+        type: 'restored',
+        status: 'completed',
+        storage_bucket: 'photos',
+        storage_path: storagePath,
+        public_url: restoredImageUrl,
+        file_size_bytes: buffer.length,
+        mime_type: `image/${fileExtension}`,
+        parent_image_id: job.original_image_id,
+        processing_completed_at: new Date().toISOString(),
+        metadata: {
+          restoration_job_id: job.id,
+          original_replicate_output: output,
+          processed_via_webhook: true
+        }
+      })
+      .select()
+      .single();
+
+    if (imageError) {
+      log.error({ error: imageError }, 'Failed to create restored image record');
+      throw new Error(`Failed to create restored image record: ${imageError.message}`);
+    }
+
+    // Update restoration job with the restored image ID
+    await supabaseAdmin
+      .from('restoration_jobs')
+      .update({ 
+        restored_image_id: restoredImageData.id,
+        updated_at: new Date().toISOString()
+      })
+      .eq('id', job.id);
+
     // Update restoration job to completed
     await updateRestorationJobStatus(job.id, 'completed', {
       completed_at: new Date().toISOString(),
@@ -215,6 +252,14 @@ async function handleJobFailure(job: any, prediction: any, log: any) {
     });
 
     log.info({ jobId: job.id, status, error }, 'Job marked as failed via webhook');
+    
+    // Check if order completion status needs to be updated
+    const orderId = job.images?.order_id;
+    if (orderId) {
+      await checkOrderCompletion(orderId, log);
+    } else {
+      log.warn({ jobId: job.id }, 'No order ID found for failed job, cannot check order completion');
+    }
     
   } catch (updateError) {
     log.error({ error: updateError, jobId: job.id }, 'Failed to update failed job');

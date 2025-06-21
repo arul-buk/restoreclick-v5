@@ -32,7 +32,7 @@ export async function POST(req: Request) {
     const mode = body.mode || 'payment';
     const imageBatchId = body.imageBatchId; // Expect imageBatchId from client
 
-    let successUrl = body.successUrl || `${origin}/payment-success?session_id={CHECKOUT_SESSION_ID}`;
+    let successUrl = body.successUrl || `${origin}/processing?session_id={CHECKOUT_SESSION_ID}`;
     if (imageBatchId) {
       successUrl = `${successUrl}&batch_id=${imageBatchId}`;
     }

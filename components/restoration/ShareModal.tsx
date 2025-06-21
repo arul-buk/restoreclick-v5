@@ -13,7 +13,7 @@ interface ShareModalProps {
     recipientName: string;
     recipientEmail: string;
     message: string;
-    sharerName: string; // Add this line
+    sharerName: string; 
   }) => void;
   recipientName: string;
   recipientEmail: string;
@@ -78,30 +78,30 @@ const ShareModal: React.FC<ShareModalProps> = ({
     <div className="fixed inset-0 bg-black/50 flex items-center justify-center p-4 z-50">
       <div className="bg-white rounded-lg shadow-xl w-full max-w-md max-h-[90vh] overflow-y-auto">
         {/* Header */}
-        <div className="flex items-center justify-between p-6 border-b">
+        <div className="flex items-center justify-between p-6 border-b border-brand-text/10">
           <div className="flex items-center gap-2">
-            <Mail className="w-5 h-5 text-blue-600" />
-            <h2 className="text-xl font-semibold text-gray-900">Share with Family</h2>
+            <Mail className="w-5 h-5 text-brand-cta" />
+            <h2 className="text-xl font-semibold text-brand-text">Share with Family</h2>
           </div>
           <button
             onClick={handleClose}
             disabled={isLoading}
-            className="p-1 hover:bg-gray-100 rounded-full transition-colors disabled:opacity-50"
+            className="p-1 hover:bg-brand-background rounded-full transition-colors disabled:opacity-50"
             aria-label="Close modal"
           >
-            <X className="w-5 h-5 text-gray-500" />
+            <X className="w-5 h-5 text-brand-text/60" />
           </button>
         </div>
 
         {/* Form */}
         <form onSubmit={handleSubmit} className="p-6 space-y-4">
-          <p className="text-gray-600 text-sm mb-4">
+          <p className="text-brand-text/80 text-sm mb-4">
             Share your beautifully restored photos with family and friends via email.
           </p>
 
           {/* Sharer Name */}
           <div>
-            <label htmlFor="sharerName" className="block text-sm font-medium text-gray-700 mb-1">
+            <label htmlFor="sharerName" className="block text-sm font-medium text-brand-text mb-1">
               Your Name
             </label>
             <Input
@@ -117,7 +117,7 @@ const ShareModal: React.FC<ShareModalProps> = ({
 
           {/* Recipient Name */}
           <div>
-            <label htmlFor="recipientName" className="block text-sm font-medium text-gray-700 mb-1">
+            <label htmlFor="recipientName" className="block text-sm font-medium text-brand-text mb-1">
               Recipient's Name
             </label>
             <Input
@@ -133,7 +133,7 @@ const ShareModal: React.FC<ShareModalProps> = ({
 
           {/* Recipient Email */}
           <div>
-            <label htmlFor="recipientEmail" className="block text-sm font-medium text-gray-700 mb-1">
+            <label htmlFor="recipientEmail" className="block text-sm font-medium text-brand-text mb-1">
               Recipient's Email <span className="text-red-500">*</span>
             </label>
             <Input
@@ -157,7 +157,7 @@ const ShareModal: React.FC<ShareModalProps> = ({
 
           {/* Personal Message */}
           <div>
-            <label htmlFor="message" className="block text-sm font-medium text-gray-700 mb-1">
+            <label htmlFor="message" className="block text-sm font-medium text-brand-text mb-1">
               Personal Message
             </label>
             <Textarea

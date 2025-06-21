@@ -32,7 +32,7 @@ export default function GentleInvitationSection() {
           <div className="pt-16">
             <div className="relative w-32 h-32 mx-auto opacity-20">
               <Image
-                src="/placeholder.svg"
+                src="/images/lily-founder.jpg"
                 alt="Vintage camera illustration"
                 fill
                 className="object-contain"

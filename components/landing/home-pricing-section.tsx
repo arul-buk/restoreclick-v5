@@ -73,7 +73,7 @@ export default function HomePricingSection() {
           ) : (
             <Card className="w-full max-w-md">
               <CardHeader>
-                <CardTitle>Studio Pro</CardTitle>
+                <CardTitle>Photo restoration </CardTitle>
                 <CardContent className="space-y-4">
                   <div className="flex items-center text-4xl font-bold">
                     {pricePerPhoto > 0 ? (
@@ -88,7 +88,7 @@ export default function HomePricingSection() {
                   <ul className="space-y-2">
                     <li className="flex items-center">
                       <Check className="mr-2 h-4 w-4 text-green-500" />
-                      Unlimited AI Image Restorations
+                      AI Image Restorations
                     </li>
                     <li className="flex items-center">
                       <Check className="mr-2 h-4 w-4 text-green-500" />

@@ -5,6 +5,7 @@ import { v4 as uuidv4 } from 'uuid';
 import logger from '@/lib/logger';
 import { downloadFileAsBuffer } from '@/lib/supabase-utils';
 import JSZip from 'jszip';
+import { generateDownloadFilename, generateZipFilename } from '@/lib/utils/filename-utils';
 
 type FileUpload = Database['public']['Tables']['file_uploads']['Row'];
 type Image = Database['public']['Tables']['images']['Row'];
@@ -309,16 +310,26 @@ export class StorageService {
   async createZip(orderId: string, imageIds: string[]): Promise<string> {
     logger.info({ orderId, imageCount: imageIds.length }, 'Creating ZIP file');
     
-    // Get image records
-    const { data: images, error: fetchError } = await supabaseAdmin
-      .from('images')
-      .select('*')
-      .in('id', imageIds);
-      
-    if (fetchError) {
-      logger.error({ error: fetchError, orderId, imageIds }, 'Failed to fetch images for ZIP');
-      throw fetchError;
+    // Get image records and order info
+    const [imagesResult, orderResult] = await Promise.all([
+      supabaseAdmin
+        .from('images')
+        .select('*')
+        .in('id', imageIds),
+      supabaseAdmin
+        .from('orders')
+        .select('order_number')
+        .eq('id', orderId)
+        .single()
+    ]);
+    
+    if (imagesResult.error) {
+      logger.error({ error: imagesResult.error, orderId, imageIds }, 'Failed to fetch images for ZIP');
+      throw imagesResult.error;
     }
+    
+    const images = imagesResult.data;
+    const orderNumber = orderResult.data?.order_number;
     
     if (!images || images.length === 0) {
       throw new Error('No images found for ZIP creation');
@@ -332,8 +343,14 @@ export class StorageService {
         // Download image data
         const imageBuffer = await downloadFileAsBuffer(image.storage_bucket, image.storage_path);
         
-        // Add to ZIP with descriptive name
-        const fileName = `${image.type}_${image.storage_path.split('/').pop()}`;
+        // Generate user-friendly filename using utility function
+        const fileName = generateDownloadFilename({
+          originalFilename: image.metadata?.original_filename,
+          mimeType: image.mime_type || 'image/png',
+          type: image.type as 'original' | 'restored',
+          fallbackId: image.id
+        });
+        
         zip.file(fileName, imageBuffer);
         
       } catch (error) {
@@ -345,8 +362,8 @@ export class StorageService {
     // Generate ZIP buffer
     const zipBuffer = await zip.generateAsync({ type: 'nodebuffer' });
     
-    // Save ZIP to storage
-    const zipFileName = `order_${orderId}_images.zip`;
+    // Save ZIP to storage with user-friendly name
+    const zipFileName = generateZipFilename(orderId, orderNumber);
     const zipPath = `downloads/${orderId}/${zipFileName}`;
     
     const { error: uploadError } = await supabaseAdmin.storage

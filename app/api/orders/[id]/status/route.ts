@@ -29,7 +29,7 @@ export async function GET(
     // 2. Get restoration jobs for this order
     const restorationJobs = await getRestorationJobsByOrder(orderId);
     
-    // 3. Calculate completion statistics
+    // 3. Calculate completion statistics for progress tracking
     const totalJobs = restorationJobs.length;
     const completedJobs = restorationJobs.filter(job => job.status === 'completed').length;
     const failedJobs = restorationJobs.filter(job => job.status === 'failed').length;
@@ -37,19 +37,8 @@ export async function GET(
       job.status === 'pending' || job.status === 'processing'
     ).length;
 
-    // 4. Determine overall status
-    let overallStatus: 'pending' | 'processing' | 'completed' | 'failed';
-    if (processingJobs > 0) {
-      overallStatus = 'processing';
-    } else if (completedJobs > 0 && failedJobs === 0) {
-      overallStatus = 'completed';
-    } else if (completedJobs === 0 && failedJobs > 0) {
-      overallStatus = 'failed';
-    } else if (completedJobs > 0 && failedJobs > 0) {
-      overallStatus = 'completed'; // Partial completion
-    } else {
-      overallStatus = 'pending';
-    }
+    // 4. Use order's status as the primary source of truth for overall status
+    const overallStatus = order.status; // Use order status directly: pending_payment, processing, completed, failed, refunded
 
     // 5. Calculate progress percentage
     const progressPercentage = totalJobs > 0 

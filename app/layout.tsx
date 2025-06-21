@@ -5,6 +5,8 @@ import { Nunito_Sans, Lora } from "next/font/google";
 import "./globals.css";
 import ClientLayout from "./clientLayout";
 import Script from "next/script";
+import { Analytics } from "@vercel/analytics/next"
+
 
 // Import worker manager to ensure auto-start runs
 import '@/lib/workers/worker-manager';
@@ -67,6 +69,7 @@ export default function RootLayout({
           </noscript>
         )}
         <ClientLayout>{children}</ClientLayout>
+        <Analytics />
       </body>
     </html>
   );

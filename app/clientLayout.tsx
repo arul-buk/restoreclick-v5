@@ -9,6 +9,8 @@ import MobileMenu from "@/components/shared/mobile-menu"
 import { usePathname } from "next/navigation"
 import GoogleTagManager from "@/components/analytics/GoogleTagManager"; // Import GTM
 import PWAServiceWorkerRegister from "@/components/PWAServiceWorkerRegister"; // Import PWA
+import { ConnectionStatusProvider } from "@/lib/context/ConnectionStatusContext";
+import OfflineOverlay from "@/components/OfflineOverlay";
 
 export default function ClientLayout({
   children,
@@ -22,7 +24,10 @@ export default function ClientLayout({
   const shouldAutoHide = pathname === '/payment-success' || pathname.startsWith('/blog')
 
   return (
-    <>
+    <ConnectionStatusProvider>
+      {/* The OfflineOverlay sits here, on top of everything but inside the provider */}
+      <OfflineOverlay />
+      
       <Suspense fallback={null}>
         <GoogleTagManager />
       </Suspense>
@@ -32,6 +37,6 @@ export default function ClientLayout({
       {pathname === "/" && <SmoothScrollNav />}
       <MobileMenu isOpen={isMobileMenuOpen} setIsOpen={setIsMobileMenuOpen} />
       <Footer />
-    </>
+    </ConnectionStatusProvider>
   )
 }

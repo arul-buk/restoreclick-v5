@@ -283,12 +283,11 @@ export class OrderRestorationPoller {
             nextPollIn: `${this.currentInterval}ms`
           });
 
-          // Check if processing is complete
-          if (orderStatus.restoration.overallStatus === 'completed' || 
-              orderStatus.restoration.overallStatus === 'failed' ||
-              orderStatus.restoration.processingJobs === 0) {
+          // Check if processing is complete - only when order status is 'completed'
+          if (orderStatus.restoration.overallStatus === 'completed') {
             
             console.log(`Order processing complete with status: ${orderStatus.restoration.overallStatus}`);
+            console.log(`Final job counts - Total: ${orderStatus.restoration.totalJobs}, Completed: ${orderStatus.restoration.completedJobs}, Failed: ${orderStatus.restoration.failedJobs}, Processing: ${orderStatus.restoration.processingJobs}`);
             this.stopPolling();
 
             // Transform to photos format and call completion callback
@@ -299,6 +298,19 @@ export class OrderRestorationPoller {
             }
             
             resolve();
+            return;
+          }
+
+          // If order status is 'failed', also stop polling and call error callback
+          if (orderStatus.restoration.overallStatus === 'failed') {
+            console.log(`Order failed with status: ${orderStatus.restoration.overallStatus}`);
+            this.stopPolling();
+            
+            if (this.config.onError) {
+              this.config.onError(new Error('Order processing failed'));
+            }
+            
+            reject(new Error('Order processing failed'));
             return;
           }
 

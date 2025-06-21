@@ -4,10 +4,9 @@
 const CACHE_NAME = 'restoreclick-v1';
 const urlsToCache = [
   '/',
-  '/blog',
-  '/_next/static/css',
-  '/_next/static/chunks',
-  // Add other important URLs to cache
+  '/manifest.json',
+  '/favicon.ico',
+  // Only cache specific static assets that we know exist
 ];
 
 // Install event - cache important files
@@ -16,7 +15,18 @@ self.addEventListener('install', (event) => {
     caches.open(CACHE_NAME)
       .then((cache) => {
         console.log('Opened cache');
-        return cache.addAll(urlsToCache);
+        // Cache each URL individually to handle failures gracefully
+        return Promise.allSettled(
+          urlsToCache.map(url => 
+            cache.add(url).catch(err => {
+              console.warn(`Failed to cache ${url}:`, err);
+              return null;
+            })
+          )
+        );
+      })
+      .catch(err => {
+        console.error('Cache installation failed:', err);
       })
   );
 });

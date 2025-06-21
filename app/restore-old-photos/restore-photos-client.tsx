@@ -126,6 +126,7 @@ export default function RestorePhotosClient() {
     }
 
     setIsLoading(true);
+    setUploadError(null); // Clear any previous upload errors
     toast.info("Preparing your photos for checkout...");
 
     try {
@@ -144,7 +145,9 @@ export default function RestorePhotosClient() {
         const uploadErrorData = await uploadResponse.json().catch(() => ({ message: 'Failed to upload images.' }));
         const uploadErrorMessage = uploadErrorData?.error || uploadErrorData?.message || 'Image upload failed.';
         console.error('Image upload API error:', uploadResponse.status, uploadErrorData);
-        toast.error(`Upload failed: ${uploadErrorMessage}`);
+        
+        // Set the upload error state for inline display
+        setUploadError(uploadErrorMessage);
         setIsLoading(false);
         return;
       }
@@ -152,7 +155,8 @@ export default function RestorePhotosClient() {
       const { sessionId: batchId } = await uploadResponse.json();
       logger.info({ batchId }, 'Received batchId from upload.');
       if (!batchId) {
-        toast.error('Failed to get upload batch ID. Please try again.');
+        const errorMessage = 'Failed to get upload batch ID. Please try again.';
+        setUploadError(errorMessage);
         setIsLoading(false);
         return;
       }
@@ -177,7 +181,9 @@ export default function RestorePhotosClient() {
         const errorData = await response.json().catch(() => ({ message: 'Server returned an error without a JSON body' }));
         const errorMessage = errorData?.error || errorData?.message || `Request failed with status ${response.status}`;
         console.error('Checkout API error:', response.status, errorData);
-        toast.error(`Checkout failed: ${errorMessage}`);
+        
+        // Set the upload error state for checkout failures too
+        setUploadError(`Checkout failed: ${errorMessage}`);
         throw new Error(errorMessage);
       }
 
@@ -186,12 +192,17 @@ export default function RestorePhotosClient() {
       if (url) {
         window.location.href = url; // Redirect to the Stripe Checkout URL
       } else {
-        toast.error('Failed to get checkout session. Please try again.');
+        const errorMessage = 'Failed to get checkout session. Please try again.';
+        setUploadError(errorMessage);
         throw new Error('Checkout session URL not found in response.');
       }
     } catch (error: any) {
       logger.error({ error_message: error.message, error_stack: error.stack }, 'Client-side checkout error.');
-      toast.error('Failed to start checkout. Please try again.')
+      
+      // Only set upload error if it hasn't been set already
+      if (!uploadError) {
+        setUploadError('Failed to start checkout. Please try again.');
+      }
     } finally {
       setIsLoading(false)
     }
@@ -237,10 +248,29 @@ export default function RestorePhotosClient() {
 
         {/* Upload Error Message */}
         {uploadError && (
-          <Alert variant="destructive" className="bg-red-500/10 border-red-500/50 text-red-700">
-            <AlertCircle className="h-4 w-4" />
-            <AlertDescription>{uploadError}</AlertDescription>
-          </Alert>
+          <div className="bg-red-50 border border-red-200 rounded-lg p-4">
+            <div className="flex items-start">
+              <AlertCircle className="h-5 w-5 text-red-600 mt-0.5 mr-3 flex-shrink-0" />
+              <div className="flex-1">
+                <p className="text-red-800 font-medium mb-2">Upload Error</p>
+                <p className="text-red-700 text-sm mb-3">{uploadError}</p>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => {
+                    setUploadError(null);
+                    // If there are files, retry the checkout process
+                    if (uploadedFiles.length > 0) {
+                      handleCheckout();
+                    }
+                  }}
+                  className="border-red-300 text-red-700 hover:bg-red-50 hover:border-red-400"
+                >
+                  Try Again
+                </Button>
+              </div>
+            </div>
+          </div>
         )}
 
         {/* Uploaded Files Grid */}

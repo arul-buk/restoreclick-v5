@@ -6,8 +6,20 @@ import { Download, Share2, Mail, Loader2 } from 'lucide-react';
 import { trackPhotoDownload } from '@/lib/analytics';
 
 interface ActionPanelProps {
-  activePhoto: { id: string; restoredUrl: string };
-  allPhotos: Array<{ id: string; restoredUrl: string }>;
+  activePhoto: { 
+    id: string; 
+    restoredUrl: string;
+    originalFilename?: string;
+    displayName?: string;
+    fileExtension?: string;
+  };
+  allPhotos: Array<{ 
+    id: string; 
+    restoredUrl: string;
+    originalFilename?: string;
+    displayName?: string;
+    fileExtension?: string;
+  }>;
   onShareClick: () => void;
   onSendToMyEmailClick: () => void;
   isLoading: boolean;
@@ -29,9 +41,63 @@ const ActionPanel: React.FC<ActionPanelProps> = ({
       if (!response.ok) throw new Error('Failed to fetch photo');
       
       const arrayBuffer = await response.arrayBuffer();
-      // Create blob with explicit PNG MIME type
-      const blob = new Blob([arrayBuffer], { type: 'image/png' });
-      const filename = `restored-photo-${Date.now()}-${currentIndex}.png`;
+      
+      // Detect MIME type from response or use default
+      const contentType = response.headers.get('content-type') || 'image/png';
+      const blob = new Blob([arrayBuffer], { type: contentType });
+      
+      // Generate user-friendly filename with improved logic
+      let filename: string;
+      
+      if (activePhoto.displayName && activePhoto.fileExtension) {
+        // Use the pre-computed display name and extension
+        filename = `${activePhoto.displayName}${activePhoto.fileExtension}`;
+        console.log('✅ Download filename:', filename);
+      } else if (activePhoto.originalFilename) {
+        // Extract base name and add "_restored" suffix
+        const baseName = activePhoto.originalFilename.replace(/\.[^/.]+$/, '');
+        const extension = activePhoto.fileExtension || 
+          (contentType.includes('jpeg') ? '.jpg' 
+          : contentType.includes('png') ? '.png'
+          : contentType.includes('webp') ? '.webp' 
+          : '.png');
+        filename = `${baseName}_restored${extension}`;
+        console.log('✅ Download filename:', filename);
+      } else {
+        // Try to extract filename from URL as fallback
+        const urlParts = activePhoto.restoredUrl.split('/');
+        const urlFilename = urlParts[urlParts.length - 1];
+        
+        if (urlFilename && urlFilename.includes('.') && !urlFilename.includes('?')) {
+          // Try to use URL filename if it looks like a real filename
+          const cleanUrlFilename = urlFilename.split('?')[0]; // Remove query params
+          if (cleanUrlFilename.match(/\.(jpg|jpeg|png|webp|gif|bmp|tiff)$/i)) {
+            const baseName = cleanUrlFilename.replace(/\.[^/.]+$/, '');
+            const extension = contentType.includes('jpeg') ? '.jpg' 
+              : contentType.includes('png') ? '.png'
+              : contentType.includes('webp') ? '.webp' 
+              : '.png';
+            filename = `${baseName}_restored${extension}`;
+            console.log('⚠️ Using URL-based filename:', filename);
+          } else {
+            // Fallback to descriptive name
+            const extension = contentType.includes('jpeg') ? '.jpg' 
+              : contentType.includes('png') ? '.png'
+              : contentType.includes('webp') ? '.webp' 
+              : '.png';
+            filename = `restored_photo_${Date.now()}${extension}`;
+            console.log('⚠️ Using timestamp fallback:', filename);
+          }
+        } else {
+          // Fallback to descriptive name with timestamp
+          const extension = contentType.includes('jpeg') ? '.jpg' 
+            : contentType.includes('png') ? '.png'
+            : contentType.includes('webp') ? '.webp' 
+            : '.png';
+          filename = `restored_photo_${Date.now()}${extension}`;
+          console.log('⚠️ Using timestamp fallback:', filename);
+        }
+      }
       
       // Create download link
       const url = URL.createObjectURL(blob);
@@ -102,8 +168,8 @@ const ActionPanel: React.FC<ActionPanelProps> = ({
       </div>
 
       {/* Tips Section */}
-      <div className="bg-gray-50 rounded-lg p-3 sm:p-4 text-xs sm:text-sm text-gray-600">
-        <h4 className="font-medium text-gray-900 mb-2">💡 Tips:</h4>
+      <div className="bg-brand-background rounded-lg p-3 sm:p-4 text-xs sm:text-sm text-brand-text/80 border border-brand-text/10">
+        <h4 className="font-medium text-brand-text mb-2">💡 Tips:</h4>
         <ul className="space-y-1">
           <li>• Use the slider above to compare before and after</li>
           {allPhotos.length > 1 && <li>• Click thumbnails below to view different photos</li>}

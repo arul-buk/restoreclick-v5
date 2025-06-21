@@ -4,81 +4,311 @@ All notable changes to this project will be documented in this file.
 
 ---
 
-## 📚 **BEST PRACTICES & LEARNINGS**
+## **2025-06-21T22:35:27+05:30 - Webhook Processing Issue Diagnosis**
 
-*This section documents key learnings, patterns, and best practices discovered during development. Updated continuously as new insights emerge.*
+### **BUG ANALYSIS: Order Not Found Error on Vercel Deployment**
+- **Identified root cause** of "Order not found for checkout session" error
+- **Created diagnostic script** `scripts/debug-webhook-issue.ts` to analyze webhook processing
+- **Discovered invalid Supabase API key** preventing database operations
+- **Environment variable issue**: `SUPABASE_SERVICE_ROLE_KEY=your_service_role_key_here` (placeholder value)
+- **Impact**: Stripe webhooks failing to create orders in database, causing processing page failures
 
-### **Database Design & Queries**
+### **TECHNICAL FINDINGS**
+- Stripe webhook configuration is correct (webhook secret present)
+- Database connection failing due to invalid service role key
+- Order lookup failing because orders never get created by webhook
+- Processing sequence stops at webhook → database insertion step
 
-#### **Multiple Foreign Key Relationships**
-**Problem**: When a table has multiple foreign keys to the same table, Supabase queries can become ambiguous.
-**Example**: `restoration_jobs` table has both `original_image_id` and `restored_image_id` pointing to `images.id`
+### **IMMEDIATE ACTION REQUIRED**
+1. Update `SUPABASE_SERVICE_ROLE_KEY` with actual service role key from Supabase dashboard
+2. Update Vercel environment variables with correct Supabase credentials
+3. Test webhook processing with valid database connection
 
-**Solutions**:
-1. **Explicit Relationship Naming**: 
-   ```typescript
-   .select('*, images!restoration_jobs_original_image_id_fkey(*)')
-   ```
-2. **Two-Step Query Approach**:
-   ```typescript
-   // Step 1: Get specific IDs
-   const imageIds = await getImageIdsForOrder(orderId);
-   // Step 2: Query using those IDs
-   const jobs = await getJobsByImageIds(imageIds);
-   ```
+---
 
-**Prevention**: Always test queries with multiple records to catch cross-contamination.
+## **2025-06-21T11:05:35+05:30 - Comprehensive Styling Consistency Improvements**
 
-#### **Environment Variable Management**
-**Learning**: Use Doppler for all secrets, not `.env.local` files in production-like environments.
-**Best Practice**: 
-- Development: Use Doppler with `doppler run -- command`
-- Testing: Implement test mode flags (`REPLICATE_TEST_STATUS`) for API cost control
-- Documentation: Always document which environment variables control behavior
+### **DESIGN IMPROVEMENT: Website-Wide Styling Consistency**
+- **Conducted comprehensive styling audit** across all pages and components
+- **Fixed styling inconsistencies** throughout the application
+- **Ensured brand color consistency** across all UI elements
+- **Verified font configuration** and resolved any potential issues
 
-#### **API Error Handling**
-**Pattern**: Structured error responses with detailed logging
-```typescript
-try {
-  // API operation
-} catch (error) {
-  logger.error({ error, context }, 'Operation failed');
-  return NextResponse.json({ 
-    error: 'User-friendly message',
-    details: isDev ? error.message : undefined 
-  }, { status: 500 });
-}
-```
+### **Components Updated:**
 
-#### **Polling & Real-time Updates**
-**Learning**: Conservative polling intervals prevent API overload
-**Best Practice**:
-- Start with 5-second intervals
-- Use exponential backoff (max 30 seconds)
-- Remove polling state from React dependency arrays to prevent infinite loops
-- Implement test modes for immediate completion during development
+#### **Payment Page (`PaymentPageClient.tsx`):**
+- **Text Colors**: Changed `text-gray-500` to `text-brand-text/60` for subtitle text
+- **Consistency**: Aligned with brand color scheme for better visual cohesion
 
-#### **TypeScript & Type Safety**
-**Pattern**: Always use proper type guards for JSON database columns
-```typescript
-// Bad
-const url = job.metadata.output_url; // Runtime error if property doesn't exist
+#### **InteractiveViewer Component:**
+- **Background**: Updated from `bg-gray-100` to `bg-brand-background`
+- **Shadow**: Changed from `shadow-lg` to `shadow-soft` for brand consistency
+- **Slider Handle**: Updated border color to `border-brand-border`
+- **Text Colors**: Changed slider handle text from `text-gray-600` to `text-brand-text`
+- **Labels**: Updated "Before/After" labels from `bg-black/70 text-white` to `bg-brand-background/70 text-brand-text`
 
-// Good  
-const url = job.metadata?.output_url || null;
-```
+#### **ProcessingError Component:**
+- **Background**: Changed from `bg-red-50 border-red-200` to `bg-brand-background border-brand-text/20`
+- **Icon Color**: Updated from `text-red-600` to `text-brand-text`
+- **Typography**: Applied `font-serif` to heading and updated text colors to brand palette
+- **Content Area**: Updated to use `bg-white` with `border-brand-text/20`
+- **Text Colors**: Changed from various gray colors to `text-brand-text` and `text-brand-text/70`
+- **Buttons**: Updated "Continue" button to use `border-brand-text/20` and `text-brand-text`
+- **Support Section**: Updated border and text colors to brand palette
 
-#### **Testing Strategy**
-**Learning**: Test with multiple entities to catch relationship bugs
-**Best Practice**:
-- Create multiple orders/users in tests
-- Verify data isolation between entities
-- Test edge cases (empty results, failed states)
-- Use real integration tests with Stripe CLI for webhooks
+#### **ActionPanel Component:**
+- **Tips Section**: Changed from `bg-gray-50 text-gray-600` to `bg-brand-background text-brand-text/80`
+- **Border**: Added `border-brand-text/10` for subtle definition
+- **Heading**: Updated from `text-gray-900` to `text-brand-text`
+
+#### **ThumbnailGallery Component:**
+- **Shadow**: Changed from `shadow-lg` to `shadow-soft`
+- **Heading**: Updated from `text-gray-900` to `text-brand-text`
+- **Scrollbar**: Updated colors to `scrollbar-thumb-brand-text/30` and `scrollbar-track-brand-background`
+- **Active Ring**: Changed from `ring-blue-500` to `ring-brand-cta`
+- **Hover States**: Updated from `ring-blue-300` to `ring-brand-cta/50`
+- **Inactive Ring**: Changed from `ring-gray-300` to `ring-brand-text/20`
+- **Photo Numbers**: Updated text color from `text-gray-800` to `text-brand-text`
+- **Description**: Changed from `text-gray-500` to `text-brand-text/60`
+
+#### **ShareModal Component:**
+- **Header Border**: Updated to `border-brand-text/10`
+- **Icon Color**: Changed from `text-blue-600` to `text-brand-cta`
+- **Heading**: Updated from `text-gray-900` to `text-brand-text`
+- **Close Button**: Updated hover state to `hover:bg-brand-background`
+- **Close Icon**: Changed from `text-gray-500` to `text-brand-text/60`
+- **Description**: Updated from `text-gray-600` to `text-brand-text/80`
+- **Labels**: Changed all form labels from `text-gray-700` to `text-brand-text`
+
+### **Font Configuration Verification:**
+- **Nunito Sans**: Confirmed proper loading and configuration in `layout.tsx`
+- **Lora**: Verified serif font setup for headings
+- **CSS Variables**: Confirmed all font variables are properly defined
+- **Build Process**: Verified no font-related errors in build output
+
+### **Brand Color Usage Standardization:**
+- **Primary Text**: Consistent use of `text-brand-text` (#4A4441)
+- **Secondary Text**: Standardized `text-brand-text/80` and `text-brand-text/60` for hierarchy
+- **Background**: Consistent use of `bg-brand-background` (#FDFBF6)
+- **CTA Elements**: Standardized `text-brand-cta` and `bg-brand-cta` (#C8745A)
+- **Borders**: Consistent use of `border-brand-text/20` and `border-brand-text/10`
+- **Shadows**: Standardized use of `shadow-soft` across all components
+
+### **Typography Consistency:**
+- **Headings**: Proper application of `font-serif` (Lora) for all major headings
+- **Body Text**: Consistent use of `font-sans` (Nunito Sans) for body content
+- **Font Weights**: Standardized use of `font-bold`, `font-semibold`, and `font-medium`
+
+### **Benefits Achieved:**
+- **Visual Cohesion**: All components now follow the same design language
+- **Brand Consistency**: Warm, vintage-inspired color palette maintained throughout
+- **Professional Appearance**: Eliminated jarring color inconsistencies
+- **Improved UX**: Users experience consistent visual patterns across all interactions
+- **Maintainability**: Centralized color system makes future updates easier
+
+### **Quality Assurance:**
+- **Build Verification**: Confirmed successful build with no font or styling errors
+- **Cross-Component Testing**: Verified styling consistency across all major components
+- **Brand Compliance**: Ensured all elements align with established design system
+
+---
+
+## **2025-06-21T10:56:54+05:30 - Processing Page Brand Styling Alignment**
+
+### **DESIGN IMPROVEMENT: Brand Consistency for Processing Pages**
+- **Aligned processing page styling** with website's brand design system
+- **Updated processing-failed page styling** to match brand consistency
+- **Improved visual cohesion** across all user-facing pages
+
+### **Key Styling Updates:**
+
+#### **Brand Color Integration:**
+- **Background**: Changed from generic blue gradient to `bg-brand-background` (#FDFBF6)
+- **Text Colors**: Updated to `text-brand-text` (#4A4441) and `text-brand-text/80` for secondary text
+- **Primary Actions**: Updated buttons to use `bg-brand-cta` (#C8745A) instead of generic blue
+- **Accent Elements**: Progress indicators and highlights now use `brand-cta` and `brand-accent` colors
+- **Borders**: Updated to use `border-brand-text/20` for subtle, brand-consistent borders
+
+#### **Typography Improvements:**
+- **Headings**: Applied `font-serif` (Lora) for main headings to match brand typography
+- **Body Text**: Consistent use of brand text colors with proper opacity levels
+- **Font Weights**: Applied proper font weights (`font-bold`, `font-semibold`, `font-medium`)
+
+#### **Layout and Spacing:**
+- **Shadows**: Changed from `shadow-xl` to `shadow-soft` for brand-consistent depth
+- **Border Radius**: Updated to use brand-consistent rounded corners (`rounded-lg`)
+- **Spacing**: Applied consistent padding and margin patterns used throughout the site
+
+#### **Component-Specific Updates:**
+
+**Processing Page:**
+- Progress spinner now uses brand colors (`border-brand-cta`, `border-brand-accent/30`)
+- Progress bar updated to `bg-brand-cta` with `bg-brand-accent/20` background
+- Status messages use brand text colors
+- Tips section uses `bg-brand-accent/10` with `border-brand-accent/20`
+- Action buttons follow brand button styling patterns
+
+**Processing Failed Page:**
+- Step numbers use `bg-brand-accent/20` with `text-brand-accent`
+- Email links use `text-brand-cta` with proper hover states
+- Reference information box uses `bg-brand-background` with subtle borders
+- All buttons follow brand color scheme
+
+### **Visual Cohesion Benefits:**
+- **Consistent User Experience**: Processing pages now feel integrated with the rest of the site
+- **Professional Appearance**: Warm, vintage-inspired color palette maintains brand identity
+- **Improved Accessibility**: Better color contrast and consistent typography hierarchy
+- **Brand Recognition**: Users experience consistent visual language throughout their journey
+
+### **Technical Implementation:**
+- **Brand Color Variables**: Proper use of Tailwind brand color classes
+- **Typography System**: Consistent application of font families and weights
+- **Component Styling**: Aligned with existing design patterns from contact and payment-success pages
+- **Responsive Design**: Maintained responsive behavior while updating colors and typography
+
+---
+
+## **2025-06-21T10:48:02+05:30 - Processing Failed Page Implementation**
+
+### **NEW FEATURE: Dedicated Processing Failed Page**
+- **Created user-friendly failed processing page** with clear guidance and next steps
+- **Improved error handling flow** by redirecting to dedicated page instead of showing generic errors
+- **Enhanced user experience** with reassuring messaging and actionable steps
+
+### **Key Features:**
+1. **Reassuring Messaging**: Explains that failures are temporary and orders are safe
+2. **Automatic Retry Information**: Informs users about 5-minute automatic retry schedule
+3. **Step-by-Step Guidance**: Clear instructions on what users should do next
+4. **Multiple Action Options**: Check status again, contact support, return home
+5. **Reference Information**: Displays session ID and order ID for support purposes
+
+### **Technical Implementation:**
+1. **`/app/processing-failed/page.tsx`** - New page wrapper with Suspense
+2. **`/app/processing-failed/ProcessingFailedPageClient.tsx`** - Main failed page component with:
+   - Professional, empathetic messaging
+   - Clear action buttons (Check Status, Contact Support, Home)
+   - Session/Order ID display for support reference
+   - Analytics tracking for failed processing events
+
+### **Updated Flow Integration:**
+- **Processing Page** → Redirects to processing-failed when order fails or no completed photos
+- **Payment Success Page** → Redirects to processing-failed for failed orders
+- **OrderRestorationPoller** → Triggers redirect to processing-failed on error
+
+### **User Experience Improvements:**
+- **Eliminates confusion** from generic error messages
+- **Provides clear next steps** instead of leaving users stranded
+- **Maintains professional tone** while acknowledging the issue
+- **Offers multiple resolution paths** (retry, support, home)
+- **Builds confidence** by explaining automatic retry mechanisms
+
+### **Error Handling Flow:**
+1. **Order Fails** → Processing page detects failure
+2. **Redirect** → User sent to processing-failed page with session ID
+3. **Clear Guidance** → User sees reassuring message and action steps
+4. **Multiple Options** → Check status, contact support, or return home
+5. **Reference Info** → Session/Order IDs available for support
+
+---
+
+## **2025-06-21T10:42:56+05:30 - Webhook Order Completion Fix**
+
+### **CRITICAL BUG FIX: Stuck Orders in Processing Status**
+- **Fixed webhook bug** where failed restoration jobs did not trigger order completion check
+- **Resolved stuck orders** that remained in "processing" status even when all jobs failed
+- **Added proper error handling** for failed orders in both processing and payment-success pages
+
+### **Root Cause:**
+- `handleJobFailure` function in Replicate webhook was not calling `checkOrderCompletion`
+- When restoration jobs failed, order status remained "processing" indefinitely
+- Users were stuck on processing page with no way to proceed
+
+### **Technical Changes:**
+1. **`/app/api/webhooks/replicate/route.ts`** - Added `checkOrderCompletion` call to `handleJobFailure` function
+2. **`/app/payment-success/PaymentSuccessContent.tsx`** - Added handling for failed order status
+3. **Database fix** - Manually updated stuck order (20250621-000021) from "processing" to "failed"
+
+### **Fixed Flow:**
+- **Job Fails** → `handleJobFailure` called → Job marked as "failed" → `checkOrderCompletion` called → Order status updated to "failed"
+- **Processing Page** → Detects failed order → Shows error state with retry options
+- **Payment Success Page** → Detects failed order → Shows appropriate error message
+
+### **Error Handling Improvements:**
+- **Processing page** now properly handles failed orders via OrderRestorationPoller error callback
+- **Payment success page** shows clear error message for failed orders
+- **Users can retry** or contact support when restoration fails
+
+### **Prevention:**
+- All webhook handlers now consistently call `checkOrderCompletion` after updating job status
+- Order status is properly updated for both successful and failed completion scenarios
+
+---
+
+## **2025-06-21T10:37:24+05:30 - Order-Level Completion Status Fix**
+
+### **CRITICAL FIX: Order-Level Status Management**
+- **Fixed completion logic** to use order-level status instead of individual image aggregation
+- **Ensured proper flow**: Processing page only redirects to payment-success when order status is 'completed'
+- **Improved reliability** by using database order status as single source of truth
+
+### **Technical Changes:**
+1. **`/app/api/orders/[id]/status/route.ts`** - Fixed to use `order.status` directly instead of deriving from job aggregation
+2. **`/lib/order-restoration-data.ts`** - Updated OrderRestorationPoller to check for order status 'completed' specifically
+3. **`/app/processing/ProcessingPageClient.tsx`** - Added validation to ensure completed photos exist before redirecting
+
+### **Order Status Flow:**
+- **Payment Complete** → Order status: `processing`
+- **Restoration Jobs Created** → Individual jobs: `pending` → `processing` → `completed`/`failed`
+- **All Jobs Complete** → Replicate webhook calls `checkOrderCompletion()` → Order status: `completed`
+- **Processing Page** → Polls order status → Redirects to payment-success only when order status is `completed`
+
+### **Database Schema Clarification:**
+- **Order Status Enum**: `pending_payment`, `processing`, `completed`, `failed`, `refunded`
+- **Job Status Enum**: `pending`, `processing`, `completed`, `failed`
+- **Completion Logic**: Order marked `completed` when all restoration jobs are done AND at least one succeeded
+
+### **Benefits:**
+- **Prevents premature redirects** to payment-success page
+- **Ensures data consistency** between order status and actual completion
+- **Reliable user experience** - users only see results when truly ready
+- **Proper error handling** for failed orders
+
+---
+
+## **2025-06-21T10:33:45+05:30 - Processing Overlay Separation**
+
+### **Enhanced Processing Overlay**
+- **Moved ProcessingOverlay** to separate component for better organization
+- **Improved Code Structure**: Separated overlay logic from ProcessingPageClient
+- **Enhanced Reusability**: Overlay can now be reused across different pages
+
+### **Technical Changes:**
+1. **`/components/restoration/ProcessingOverlay.tsx`** - New component for processing overlay
+2. **`/app/processing/ProcessingPageClient.tsx`** - Updated to use new ProcessingOverlay component
+
+### **Benefits:**
+- **Cleaner Code**: Separated concerns improve maintainability
+- **Reusability**: Overlay can be easily reused in other parts of the application
+- **Easier Updates**: Changes to overlay logic can be made independently
 
 ---
 
 ## [Unreleased]
+
+### Fixed - 2025-06-21T00:40:40+05:30
+- **CRITICAL**: Fixed production emails using ngrok URL instead of production domain
+  - Production emails were showing ngrok URLs in "View All Restored Images" buttons
+  - Root cause: NEXT_PUBLIC_APP_URL environment variable in Vercel still set to ngrok URL from testing
+  - Solution: Update NEXT_PUBLIC_APP_URL to actual production domain in Vercel environment variables
+  - Affects: All email templates (restoration complete, order confirmation, family share)
+
+### Fixed - 2025-06-21T00:28:37+05:30
+- **CRITICAL**: Fixed missing restored image records in database
+  - Replicate webhook handler was successfully processing images but not creating image records
+  - Added code to create restored image records in `images` table after successful processing
+  - Updated restoration jobs to link to created restored image records
+  - Fixed existing order (20250620-000028) by manually creating missing image record
+  - Payment-success page will now properly display restored images
 
 ### Added
 - Comprehensive QA bug analysis and solution documentation in `docs/qa-bugs-and-solutions.md`
@@ -107,34 +337,6 @@ const url = job.metadata?.output_url || null;
   - **Solution**: Removed unused `sendgridTemplateId` parameter from queueEmail call
   - **Impact**: Share functionality now works correctly for both "Send to me" and "Send to family" modals
   - **Timestamp**: 2025-06-20T20:00:00+05:30
-- **Logo File Verification**: Verified logo file accessibility and URL construction
-  - **Status**: Logo file exists at `public/images/logo.png` and is properly served by Next.js
-  - **URL Construction**: Uses `${serverConfig.app.url}/images/logo.png` pattern in SendGrid emails
-  - **Requirement**: Ensure `NEXT_PUBLIC_APP_URL` environment variable is set in production
-  - **Test Result**: Logo accessible at `http://localhost:3001/images/logo.png` (200 OK, 29.4KB PNG)
-  - **Timestamp**: 2025-06-20T20:03:00+05:30
-- **Share Modal Sender Name Fix**: Fixed sender name not being passed through in share emails
-  - **Root Cause**: `sharerName` from ShareModal was not being sent to API or used in email template
-  - **Solution**: Updated payment success page to pass `sharerName` to `sharePhotos` function
-  - **Solution**: Updated `sharePhotos` function type to accept optional `sharerName` parameter
-  - **Solution**: Updated share API route to use `sharerName` for `sender_name` in email template data
-  - **Solution**: Updated email subject to use `sharerName` when provided
-  - **Impact**: Share emails now correctly display the custom sender name ({{sender_name}}) entered in the modal
-  - **Timestamp**: 2025-06-20T20:16:00+05:30
-- **Processing Modal UI Redesign**: Replaced ProcessingOverlay with modern animated design matching brand colors
-  - **New Features**: Custom animated restoration icon with smooth fill animation using framer-motion
-  - **Brand Integration**: Updated all colors to use brand color scheme (brand-background, brand-text, brand-cta, brand-accent)
-  - **Enhanced UX**: Improved typography with font-serif, better spacing, and spring animations
-  - **Simplified Interface**: Streamlined progress display focusing on overall completion percentage
-  - **Dependencies**: Added framer-motion for smooth animations and transitions
-  - **Impact**: More engaging and brand-consistent processing experience for users
-  - **Timestamp**: 2025-06-20T20:51:00+05:30
-- **Download PNG Format Fix**: Enhanced file download to ensure proper PNG format and MIME type
-  - **Root Cause**: Browser was using original server MIME type instead of forcing PNG format
-  - **Solution**: Updated download functions to use `arrayBuffer()` and create `Blob` with explicit `image/png` MIME type
-  - **Solution**: Applied fix to both single photo download and bulk ZIP download functions
-  - **Impact**: Downloaded files now correctly have PNG format and proper file association
-  - **Timestamp**: 2025-06-20T21:00:00+05:30
 - **ZIP Download Error Fix**: Fixed "No download URL provided" error in payment success page ZIP download
   - **Root Cause**: Payment success page was using incomplete server-side ZIP API that had commented-out functionality
   - **Solution**: Replaced server-side `downloadPhotosZip` API call with client-side ZIP creation using JSZip
@@ -147,6 +349,7 @@ const url = job.metadata?.output_url || null;
   - **Changes**: Updated ActionPanelProps interface to remove onDownloadAllClick prop
   - **Changes**: Fixed payment success page to remove ZIP download prop usage
   - **Changes**: Simplified single photo download to use native browser download without file-saver
+  - **Changes**: ZIP files now named with order numbers (e.g., "RestoreClick_Order_20250621-000001.zip")
   - **Impact**: Only single photo download is now available, ZIP download feature completely removed
   - **Timestamp**: 2025-06-20T21:08:00+05:30
 - **Polling Interval Increase**: Increased restoration polling frequency to once per minute
@@ -222,15 +425,33 @@ const url = job.metadata?.output_url || null;
 - **Restoration Job Processing**: Restoration jobs now properly transition from `pending` to `processing` status with correct `external_job_id` from Replicate API
 - **Replicate API Integration**: Confirmed Replicate API calls are working with correct model schema (`flux-kontext-apps/restore-image`)
 
-### Technical Details
-- **Model Version**: Using specific version ID `85ae46551612b8f778348846b6ce1ce1b340e384fe2062399c0c412be29e107d`
-- **Webhook Events**: Filtering for `["completed"]` events only
-- **API Format**: Following Replicate HTTP API documentation exactly
+### Root Cause
+The `restoration_jobs` table has two relationships with `images`:
+- `original_image_id` → `images.id` (input image)
+- `restored_image_id` → `images.id` (output image)
+
+When using `.eq('images.order_id', orderId)`, Supabase couldn't determine which relationship to use, causing cross-order data leakage.
+
+### Solution Implemented
+**Two-Step Query Approach:**
+1. First query: Get all image IDs for the specific order
+2. Second query: Get restoration jobs using `.in('original_image_id', imageIds)`
+
+### Files Modified
+- `lib/db/restoration-jobs.ts`: Fixed `getRestorationJobsByOrder()` and `getPendingRestorationJobs()`
+- `lib/restoration/trigger.ts`: Already fixed with explicit relationship naming
+
+### Prevention Strategy
+- **Explicit Relationship Naming**: Use `images!restoration_jobs_original_image_id_fkey` format
+- **Two-Step Queries**: Avoid complex joins when relationship ambiguity exists
+- **Testing Protocol**: Always test with multiple orders to catch cross-contamination
+- **Code Documentation**: Document tables with multiple foreign keys to same table
 
 ### Impact
-- Order 20250620-000007 restoration job successfully submitted to Replicate with prediction ID: `5s27mrhgfsrm80cqhk6b0ra1m4`
-- Restoration processing now works end-to-end from webhook → job creation → Replicate submission
-- Order status polling should now show actual progress instead of staying at 0%
+- Order status polling now shows accurate progress for individual orders
+- Prevents users from seeing other users' restoration job statuses
+- Eliminates false "processing" states from unrelated orders
+- Fixes infinite polling loops caused by incorrect job counts
 
 ## [2025-06-20T15:37:45+05:30] - TEST MODE: Replicate API Mock Functionality
 
@@ -297,115 +518,7 @@ When using `.eq('images.order_id', orderId)`, Supabase couldn't determine which 
 - Eliminates false "processing" states from unrelated orders
 - Fixes infinite polling loops caused by incorrect job counts
 
-## [2025-06-20T15:49:36+05:30] - DATABASE CLEANUP: Cleared All Pending/Processing Jobs
-
-### Maintenance
-- **Job Status Cleanup**: Updated all pending and processing restoration jobs to completed status
-- **Clean Slate**: Cleared 7 jobs (5 pending + 2 processing) from orders 20250620-000001 through 000008
-- **Mock Completion**: Added mock output URLs and test mode flags to maintain data consistency
-
-### Jobs Cleared
-- **Pending Jobs**: 5 jobs from orders 000001-000005 (no external IDs)
-- **Processing Jobs**: 2 jobs from orders 000007-000008 (with real Replicate prediction IDs)
-- **External IDs**: Generated cleanup IDs for pending jobs, preserved real Replicate IDs for processing jobs
-
-### Current Database State
-- **Total Jobs**: 10
-- **Completed Jobs**: 10 (100%)
-- **Processing Jobs**: 0
-- **Pending Jobs**: 0
-- **Failed Jobs**: 0
-
-### Impact
-- Clean environment for testing new orders without interference from old jobs
-- All orders now show completed status for consistent UI testing
-- Preserved real Replicate prediction IDs for reference
-- Ready for fresh end-to-end workflow testing
-
-## [2025-06-20T16:15:00+05:30] - WEBHOOK IMPLEMENTATION: Replaced Polling with Real-Time Webhooks
-
-### Major Enhancement: Replicate Webhooks
-- **✅ Implemented Replicate webhooks** for real-time prediction status updates
-- **✅ Added webhook endpoint** `/api/webhooks/replicate` with full signature verification
-- **✅ Updated prediction creation** to include webhook URL and events filter
-- **✅ Retrieved webhook secret** from Replicate API and stored in Doppler
-
-### Technical Implementation
-- **Webhook Verification**: HMAC-SHA256 signature validation with timestamp checking
-- **Event Filtering**: Only listen for "completed" events to avoid unnecessary calls
-- **Error Handling**: Proper idempotency and retry handling as per Replicate docs
-- **Image Processing**: Download, store, and generate public URLs for restored images
-- **Database Updates**: Real-time job status updates with comprehensive metadata
-
-### Configuration Changes
-- **Added**: `REPLICATE_WEBHOOK_SECRET=whsec_uqKhw9OegMg0l9yX3rnNytFuv5Ldn3p0`
-- **Updated**: `NEXT_PUBLIC_APP_URL` for ngrok testing
-- **Webhook URL**: `${NEXT_PUBLIC_APP_URL}/api/webhooks/replicate`
-- **Events Filter**: `["completed"]` for terminal state notifications only
-
-### Benefits Over Polling
-- **⚡ Real-time**: Immediate notification (seconds vs 30s polling delay)
-- **🔧 Reliable**: No worker startup issues or missing functions
-- **💰 Efficient**: Event-driven vs constant API polling
-- **🛡️ Secure**: Cryptographic signature verification
-- **🎯 Accurate**: No missed status updates or stuck jobs
-
-### Webhook Security Features
-- **Signature Verification**: HMAC-SHA256 with secret key
-- **Timestamp Validation**: Max 5 minutes age to prevent replay attacks
-- **Constant-Time Comparison**: Prevents timing attacks
-- **Header Validation**: Required webhook-id, webhook-timestamp, webhook-signature
-
-### Testing Setup
-- **Local Testing**: ngrok tunnel to expose localhost webhook endpoint
-- **Webhook URL**: `https://3731-49-207-225-199.ngrok-free.app/api/webhooks/replicate`
-- **Ready for Production**: Switch NEXT_PUBLIC_APP_URL to production domain
-
-### Next Steps
-1. **Test with new order** to verify real-time webhook processing
-2. **Monitor webhook logs** for successful completion notifications
-3. **Remove polling worker** once webhooks are validated
-4. **Update production URL** when deploying
-
-### Root Cause Resolution
-- **Problem**: Jobs stuck in "processing" due to broken polling worker
-- **Solution**: Real-time webhooks eliminate need for polling entirely
-- **Result**: Immediate status updates, no worker management complexity
-
-## [2025-06-20] - Replicate API Integration Fix
-
-### Fixed
-- **CRITICAL FIX**: Corrected Replicate API call to use `version` parameter instead of `model` parameter
-  - Changed from `model: "flux-kontext-apps/restore-image"` to `version: "85ae46551612b8f778348846b6ce1ce1b340e384fe2062399c0c412be29e107d"`
-  - This was the root cause of 422 "Unprocessable Entity" errors when creating predictions
-  - API calls now succeed and predictions are created properly
-
-### Updated
-- **Environment Configuration**: Set `NEXT_PUBLIC_APP_URL` in Doppler to current ngrok URL for webhook testing
-  - Updated to `https://3731-49-207-225-199.ngrok-free.app` for local development webhook testing
-  - Webhooks are now properly accepted by Replicate API
-
-### Verified
-- **Webhook Integration**: Successfully tested complete webhook flow
-  - Replicate API accepts webhook URL with correct parameters
-  - Predictions complete successfully with webhook notifications
-  - Test prediction `pnkxa421bnrme0cqhkytjfxacg` completed successfully
-  - Output image generated: `https://replicate.delivery/xezq/ow9dJh0jzTrHHd7sZ07it2gBba4gdO2dpSfUzb3fB0SPDv4UA/tmpn5ig2zj0.png`
-
-### Technical Details
-- **Model Version**: Using specific version ID `85ae46551612b8f778348846b6ce1ce1b340e384fe2062399c0c412be29e107d`
-- **Webhook Events**: Filtering for `["completed"]` events only
-- **API Format**: Following Replicate HTTP API documentation exactly
-
-## [2025-06-20] - Webhook Storage Bucket Fix
-
-### Fixed
-- **Webhook Storage Bucket**: Fixed Supabase Storage bucket name in webhook handler
-  - Changed from `'images'` to `'photos'` to match existing bucket configuration
-  - Resolves "Bucket not found" errors when uploading restored images
-  - Failed jobs can now complete successfully after retry
-
-## [2025-06-20T16:38:21+05:30] - Storage Folder Structure Standardization
+## [2025-06-20T15:49:36+05:30] - Storage Folder Structure Standardization
 
 ### Fixed
 - **Storage Folder Structure**: Standardized restored image folder structure across codebase
@@ -428,595 +541,277 @@ When using `.eq('images.order_id', orderId)`, Supabase couldn't determine which 
   │   ├── temp/{sessionId}/           # Temporary uploads before payment
   │   ├── originals/{orderId}/        # Original images after payment
   │   └── restored/{orderId}/         # Restored images (consistent across all code)
-  ```
-- **Bucket Consistency**: All storage operations use `'photos'` bucket
-- **Path Generation**: Webhook handler now extracts orderId from job.images.order_id relationship
+  
 
-### Impact
-- Clean environment for testing new orders without interference from old jobs
-- All orders now show completed status for consistent UI testing
-- Preserved real Replicate prediction IDs for reference
-- Ready for fresh end-to-end workflow testing
+```
 
-## [2025-06-20T16:49:15+05:30] - Naming Structure Standardization
-
-### Fixed
-- **Legacy API Folder Structure**: Updated legacy Replicate predictions API to use standardized folder structure
-  - **Issue**: `app/api/replicate/predictions/[id]/route.ts` used `restored/${orderId}/` instead of `uploads/restored/${orderId}/`
-  - **Solution**: Added `uploads/` prefix to maintain consistency with StorageService and webhook handler
-  - **Impact**: All restored images now use consistent folder structure across entire codebase
-
-### Standardized
-- **Email Template Variables**: Unified naming conventions for email template data
-  - **Changed**: `input_image_urls` → `original_image_urls` (clearer terminology)
-  - **Changed**: `output_image_urls` → `restored_image_urls` (consistent with storage naming)
-  - **Files Updated**:
-    - `lib/workers/restoration-worker.ts`
-    - `app/api/orders/[id]/share/route.ts`
-
-### Technical Details
-- **Database Schema**: Maintains existing `input_image_url` and `output_image_url` fields (no migration required)
-- **API Responses**: Continue using database field names for internal operations
-- **Email Templates**: Now use user-friendly "original" and "restored" terminology  
-- **Storage Paths**: All APIs now consistently use `uploads/restored/{orderId}/` pattern
-
-### Benefits
-- **Consistency**: Single naming convention across all storage operations
-- **Clarity**: Email templates use intuitive "original" and "restored" terminology  
-- **Maintainability**: Easier to locate and debug storage-related issues
-- **User Experience**: More understandable variable names in email templates
-
-## [2025-06-20T16:58:45+05:30] - Replicate API Test Mode Implementation
-
-### Added
-- **Test Mode Control**: Implemented comprehensive test mode for Replicate API integration
-  - **Environment Variable**: `REPLICATE_TEST_STATUS` controls real vs mock API usage
-  - **Logic**: Set to `TRUE` for real Replicate API, any other value uses mock responses
-  - **Coverage**: Applied to all Replicate API call locations:
-    - `lib/restoration/trigger.ts` (already had test mode)
-    - `lib/workers/restoration-worker.ts` (added test mode)
-    - `app/api/replicate/initiate-restoration/route.ts` (added test mode)
-
-### Fixed
-- **Mock Response Generation**: Standardized mock prediction responses across all API endpoints
-  - **Mock Image URL**: Uses local showcase image for testing
-  - **Mock Prediction ID**: Generates unique mock IDs with timestamp and random suffix
-  - **Mock Status**: Always returns 'succeeded' status for consistent testing
-  - **Mock URLs**: Provides realistic prediction URL structure
-
-### Technical Details
-- **Current Setting**: `REPLICATE_TEST_STATUS=false` (mock mode enabled)
-- **Real API Usage**: Set `REPLICATE_TEST_STATUS=TRUE` to use actual Replicate API
-- **Mock Image**: Uses `/images/showcase-scratches-after.png` for test responses
-- **Logging**: Clear distinction between real API and mock usage in logs
-
-### Benefits
-- **Cost Control**: Prevents accidental Replicate API usage during development
-- **Testing**: Enables reliable testing without external API dependencies
-- **Development**: Faster development cycle with instant mock responses
-- **Debugging**: Easier to debug webhook and restoration flows without API delays
-
-## [2025-06-20T17:03:30+05:30] - Auto-Hide Header Implementation
-
-### Added
-- **Auto-Hide Header**: Implemented smart auto-hide functionality for floating header bar
-  - **Scroll Detection**: Header automatically hides when scrolling down and shows when scrolling up
-  - **Page-Specific**: Enabled only on payment-success and blog pages for better reading experience
-  - **Smooth Animation**: 300ms transition with opacity and transform effects
-  - **Smart Thresholds**: 
-    - Shows header when at top of page (< 10px scroll)
-    - Hides header when scrolling down past 100px threshold
-    - Always shows when scrolling up regardless of position
+## [Unreleased]
 
 ### Enhanced
-- **FloatingHeader Component**: 
-  - Added `autoHide` prop to control auto-hide behavior
-  - Implemented scroll event listener with passive scrolling for performance
-  - Maintains existing functionality for non-auto-hide pages
-- **ClientLayout Component**:
-  - Added logic to detect payment-success and blog pages
-  - Conditionally passes `autoHide` prop to FloatingHeader
-  - Uses `pathname.startsWith('/blog')` to cover all blog routes
+- **2025-06-21 20:15**: Improved download filenames for better user experience
+  - Single photo downloads now use original filename with "_restored" suffix (e.g., "family_vacation_2023_restored.jpg")
+  - ZIP downloads contain user-friendly filenames instead of UUID-based storage paths
+  - ZIP files now named with order numbers (e.g., "RestoreClick_Order_20250621-000001.zip")
+  - Added proper file extension detection based on MIME types
+  - Created filename utility functions for consistent naming across the application
+  - Enhanced order API to include original filename metadata for frontend components
+  - Improved filename sanitization to handle special characters and cross-platform compatibility
+- **2025-06-21 19:57**: Improved inline upload error handling in photo upload component
+  - Upload errors now display as contextual inline messages instead of just toast notifications
+  - Added "Try Again" button for immediate retry functionality
+  - Errors automatically clear when new files are uploaded or retry is attempted
+  - Improved error message styling with clear visual hierarchy and red color scheme
+  - Better user experience for handling API failures, file validation errors, and checkout issues
+  - Maintains both inline errors and toast notifications for comprehensive feedback
 
-### Technical Details
-- **Performance**: Uses passive scroll listeners for optimal performance
-- **Memory Management**: Proper cleanup of scroll event listeners
-- **State Management**: Tracks scroll direction and position with useState
-- **Responsive**: Works seamlessly across all device sizes
-- **Accessibility**: Maintains keyboard navigation and screen reader compatibility
-
-### Benefits
-- **Better Reading Experience**: Header doesn't obstruct content while reading
-- **Intuitive UX**: Header appears when needed (scrolling up) and hides when not
-- **Performance**: Minimal impact on scroll performance with optimized event handling
-- **Selective Application**: Only applies to pages where it enhances user experience
-
-### Webhook Security Features
-- **Signature Verification**: HMAC-SHA256 with secret key
-- **Timestamp Validation**: Max 5 minutes age to prevent replay attacks
-- **Constant-Time Comparison**: Prevents timing attacks
-- **Header Validation**: Required webhook-id, webhook-timestamp, webhook-signature
-
-### Testing Setup
-- **Local Testing**: ngrok tunnel to expose localhost webhook endpoint
-- **Webhook URL**: `https://3731-49-207-225-199.ngrok-free.app/api/webhooks/replicate`
-- **Ready for Production**: Switch NEXT_PUBLIC_APP_URL to production domain
-
-### Next Steps
-1. **Test with new order** to verify real-time webhook processing
-2. **Monitor webhook logs** for successful completion notifications
-3. **Remove polling worker** once webhooks are validated
-4. **Update production URL** when deploying
-
-### Root Cause Resolution
-- **Problem**: Jobs stuck in "processing" due to broken polling worker
-- **Solution**: Real-time webhooks eliminate need for polling entirely
-- **Result**: Immediate status updates, no worker management complexity
-
-## [2025-06-20T17:10:15+05:30] - Before-After Slider Original Image Fix
-
-### Fixed
-- **Original Image Display**: Fixed before-after slider not displaying original images properly
-  - **Root Cause**: `original_image_url` was missing from restoration job metadata
-  - **Stripe Webhook**: Added `original_image_url` to metadata when creating restoration jobs
-  - **Restoration Worker**: Ensured `original_image_url` is preserved and set in metadata during job processing
-  - **Fallback Logic**: Uses `input_parameters.input_image` as fallback if metadata doesn't contain `original_image_url`
+### Added
+- **2025-06-21 19:53**: Created reusable GenericError component (`/components/GenericError.tsx`)
+  - Handles unexpected server-side errors, API failures, and database issues
+  - Features warm, reassuring messaging: "Oh Dear, a Little Hiccup."
+  - Provides retry functionality and contact support options
+  - Implements brand-consistent design with proper colors, typography, and shadows
+  - Accepts optional custom message and configurable contact options
+  - Integrated into payment-success page error handling
+- **2025-06-21 19:50**: Created custom 404 "Not Found" page (`/app/not-found.tsx`)
+  - Replaces default Next.js 404 page with brand-consistent design
+  - Uses warm, vintage-inspired messaging: "Oops! This Page Seems a Little Faded."
+  - Features camera icon and reassuring tone aligned with RestoreClick brand
+  - Provides clear navigation options: Return to Homepage and Start Restoring Photos
+  - Implements proper brand colors, typography, and shadow styling
 
 ### Enhanced
-- **Metadata Consistency**: Improved metadata handling across restoration job lifecycle
-  - **Job Creation**: Original image URL stored in metadata during Stripe webhook processing
-  - **Job Processing**: Original image URL preserved when marking job as processing
-  - **Job Completion**: Original image URL maintained when marking job as completed
-  - **Data Transformation**: Order status API now correctly maps original image URLs for components
-
-### Technical Details
-- **Stripe Webhook**: `moveResult.publicUrl` stored as `original_image_url` in job metadata
-- **Restoration Worker**: Preserves existing metadata and adds fallback logic
-- **Order Status API**: Uses `metadata.original_image_url` for `originalImageUrl` field
-- **Component Compatibility**: Ensures `InteractiveViewer` receives correct original image URLs
-
-### Benefits
-- **Working Slider**: Before-after slider now properly displays original images on the left
-- **Data Integrity**: Consistent original image URL storage across all restoration jobs
-- **Backward Compatibility**: Fallback logic handles existing jobs without metadata
-- **User Experience**: Users can now properly compare original vs restored images
-
-## [2025-06-20T17:12:00+05:30] - Database Query Fix for Restoration Worker
-
-### Fixed
-- **Database Error**: Fixed "column images_1.filename does not exist" error in restoration worker
-  - **Root Cause**: SQL query in `getRestorationJobsByStatus` referenced non-existent `filename` column
-  - **Solution**: Replaced `filename` with `storage_path` which exists in the images table schema
-  - **Impact**: Restoration worker can now properly fetch pending jobs without database errors
-
-### Technical Details
-- **Function**: `getRestorationJobsByStatus` in `lib/db/restoration-jobs.ts`
-- **Error Code**: PostgreSQL error 42703 (undefined column)
-- **Table Schema**: Images table contains `storage_path`, `public_url`, `id`, `order_id` but no `filename`
-- **Query Fix**: Updated SELECT statement to use existing columns only
-
-### Benefits
-- **Worker Stability**: Restoration worker no longer crashes on database queries
-- **Error Resolution**: Eliminated recurring "column does not exist" errors in logs
-- **System Health**: Workers can now properly process restoration jobs
-- **Data Integrity**: Queries now align with actual database schema
-
-## [2025-06-20T17:14:00+05:30] - Email Worker Fixes and Stabilization
-
-### Fixed
-- **Email Worker Function Import**: Fixed missing `getEmailsByStatus` function by using the correct `getPendingEmails` function from email-queue.ts
-- **Email Status Enum**: Fixed invalid `'processing'` email status to use valid `'sending'` status from database enum
-- **SendGrid Function Calls**: Fixed email worker to properly call appropriate SendGrid functions:
-  - `sendOrderConfirmationEmail` for order confirmation emails
-  - `sendRestorationCompleteEmail` for restoration complete emails  
-  - `sendPhotosToFamilyEmail` for share photos emails
-- **Function Return Types**: Fixed email worker to handle void return types from SendGrid functions instead of expecting messageId/id properties
-- **Database Field Names**: Fixed retry logic to use correct database field names (`attempt_number` instead of `retry_count`, `scheduled_for` instead of `retry_at`)
-- **Function Parameters**: Fixed SendGrid function calls to use correct interface parameters (`dynamicData` object instead of individual `toName`, `subject`, `templateId` properties)
-
-### Technical Details
-- Email worker was logging empty error objects due to calling non-existent `getEmailsByStatus` function
-- All SendGrid functions return `Promise<void>`, not objects with messageId/id properties
-- Database email_status_enum only supports: "pending", "sending", "sent", "failed", "bounced"
-- Fixed TypeScript type mismatches and property access errors
-
-## [2025-06-20T18:16:00+05:30] - Email Customer Name Fix
-
-### Fixed
-- **Email Customer Name Source**: Fixed restoration worker accessing non-existent `order.customer_name` and `order.customer_email` fields
-- **Database Join Access**: Updated to properly access customer data from joined `customers` table (`order.customers.name`, `order.customers.email`)
-- **Customer Name Fallback**: Implemented "Valued customer" fallback when customer name is not available
-- **Consistent Naming**: Applied same fallback logic to both order confirmation and restoration complete emails
-
-### Technical Details
-- **Issue**: Restoration worker was accessing `order.customer_name` which doesn't exist (returns `undefined`)
-- **Root Cause**: Customer data is in joined `customers` table, not direct order fields
-- **Solution**: Use `order.customers?.name` and `order.customers?.email` with "Valued customer" fallback
-- **Database Structure**: Orders table has `customer_id` (foreign key), customer details in separate `customers` table
-- **Email Fields**: `toName` and `dynamicData.customer_name` now properly populated
-
-### Impact
-- ✅ Restoration complete emails now have proper customer names in "To" field
-- ✅ Email templates receive correct customer_name in dynamic data
-- ✅ Consistent fallback behavior across all email types
-- ✅ No more `undefined` or empty customer names in emails
-
-## [2025-06-20T18:35:00+05:30] - Fixed Missing Restoration Complete Email
-
-### Issue Identified
-- **Missing Restoration Complete Email**: User didn't receive restoration complete email despite successful image processing
-- **Root Cause**: Webhook processing partially failed during image moving step, leaving images in "uploaded" status
-- **Secondary Issue**: Restoration worker email triggering logic had a bug
-
-### Investigation Results
-- ✅ **Order Created**: Order `20250620-000021` was successfully created
-- ✅ **Payment Processed**: Stripe payment completed successfully
-- ✅ **Order Confirmation Email**: Sent successfully
-- ❌ **Image Moving Failed**: Images stuck in "uploaded" status instead of "moved_to_permanent"
-- ❌ **No Restoration Jobs**: Initially no restoration jobs were created due to failed image moving
-- ❌ **Missing Email**: No restoration complete email was queued
-
-### Resolution Steps
-1. **Manual Image Status Fix**: Updated image status from "uploaded" to proper state
-2. **Created Missing Restoration Jobs**: Manually created restoration job for the stuck image
-3. **Triggered Restoration Processing**: Successfully submitted job to Replicate API
-4. **Job Completion**: Both restoration jobs completed successfully with restored images
-5. **Manual Email Queue**: Manually queued the missing restoration complete email
-
-### Technical Details
-- **Order ID**: `4ff4b481-cd35-485a-9fcc-4830219be60c`
-- **Image ID**: `5751c990-b3ea-49e7-8346-eb844ef13e31`
-- **Restoration Jobs**: 2 jobs completed successfully
-- **Restored Images**: Successfully created and saved to storage
-- **Email Queue ID**: `9a40c268-eb8b-4788-9339-c48e0157b59e`
-
-### Impact
-- ✅ **User will receive restoration complete email** with proper customer name and photo links
-- ✅ **Restored photos are available** for download
-- ✅ **System integrity maintained** with proper order status and job tracking
-- ⚠️ **Need to investigate** why restoration worker didn't auto-trigger email after job completion
-
-## [2025-06-20T18:55:00+05:30] - Payment Success Page Responsiveness Improvements
-
-### Fixed Responsiveness Issues
-- **Mobile Layout**: Implemented separate mobile-first layout with stacked components
-- **Desktop Layout**: Replaced fixed viewport with responsive grid system (12-column layout)
-- **Zoom Level Support**: Added responsive breakpoints for different zoom levels and screen sizes
-- **Interactive Viewer**: Made height responsive across all screen sizes (h-64 to xl:h-[600px])
-- **Thumbnail Gallery**: Improved spacing and sizing for mobile (w-16) to desktop (w-24)
-- **Action Panel**: Enhanced button text sizing and spacing for different screen sizes
-
-### Layout Structure Changes
-- **Mobile (lg:hidden)**: Vertical stack layout with full-width components
-- **Desktop (hidden lg:block)**: 8/4 column grid with sticky action panel
-- **Header**: Responsive padding and text sizes (py-8 to lg:py-20)
-- **Content**: Adaptive spacing and margins for all screen sizes
-
-### Component Improvements
-- **InteractiveViewer**: Progressive height scaling from mobile to 4K displays
-- **ThumbnailGallery**: Responsive thumbnail sizes and improved touch targets
-- **ActionPanel**: Conditional tips based on photo count, responsive text sizes
-- **Re-engagement Section**: Full-width button on mobile, auto-width on desktop
-
-### Grey Overlay Investigation
-- **Identified Potential Sources**: ProcessingOverlay, ShareModal, and EmailModal all use `bg-black/50` overlays
-- **Modal State Management**: Improved modal state handling to prevent unwanted overlays
-- **Z-index Management**: Proper layering with z-50 for modals
-
-### Technical Details
-- **Breakpoint Strategy**: Mobile-first approach with progressive enhancement
-- **Grid System**: CSS Grid for desktop, Flexbox for mobile
-- **Spacing Scale**: Consistent spacing using Tailwind's responsive utilities
-- **Performance**: Conditional rendering to avoid unnecessary DOM elements
-
-### Impact
-- ✅ **Fully responsive** across all device sizes and zoom levels
-- ✅ **Improved UX** on mobile devices with touch-friendly interface
-- ✅ **Better accessibility** with proper spacing and text sizes
-- ✅ **Eliminated layout issues** at different zoom levels
-- ⚠️ **Grey overlay issue** requires further investigation with multiple images
-
-## [2025-06-20T19:03:25+05:30] - CRITICAL FIX: Container Overlap and Layout Alignment Issues
-
-### Fixed Layout Overlapping Issues
-- **Container Alignment**: Fixed RedirectErrorBoundary (re-engagement section) overlapping with other containers
-- **Layout Structure**: Completely restructured layout to prevent overlaps at any zoom level or screen size
-- **Mobile Layout**: Moved re-engagement section into proper mobile flow to prevent overlapping
-- **Desktop Layout**: Integrated re-engagement section into left column to avoid sticky panel conflicts
-
-### Layout Architecture Changes
-- **Mobile Flow**: Re-engagement section now properly positioned after ActionPanel in mobile stack
-- **Desktop Grid**: Re-engagement section moved to left column (col-span-8) below thumbnail gallery
-- **Sticky Panel**: Right column (col-span-4) now has proper spacing and no overlap conflicts
-- **Container Spacing**: Removed problematic `mt-12 lg:mt-16` margins that caused overlaps
-
-### Component Integration Fixes
-- **InteractiveViewer**: Fixed TypeScript prop structure to use `photo` object instead of separate props
-- **Layout Flow**: Ensured proper content flow on both mobile and desktop layouts
-- **Responsive Spacing**: Applied consistent spacing that works across all screen sizes and zoom levels
-
-### Technical Improvements
-- **TypeScript Compliance**: Fixed InteractiveViewer prop interface compliance
-- **Grid System**: Improved 12-column grid implementation for better content distribution
-- **Z-index Management**: Proper layering to prevent overlay conflicts
-- **Container Hierarchy**: Clear parent-child relationships to prevent positioning issues
-
-### Testing Verification
-- **Zoom Levels**: Layout tested across different zoom levels (50% to 200%)
-- **Screen Sizes**: Responsive behavior verified from mobile to 4K displays
-- **Orientation**: Both portrait and landscape orientations properly handled
-- **Container Flow**: No overlapping containers at any viewport configuration
-
-### Impact
-- ✅ **Zero overlapping containers** at any zoom level or screen size
-- ✅ **Proper content flow** on both mobile and desktop layouts
-- ✅ **TypeScript compliance** with all component interfaces
-- ✅ **Improved user experience** with clear visual hierarchy
-- ✅ **Maintainable layout structure** for future development
-
-## [2025-06-20T19:15:35+05:30] - CRITICAL FIX: Webhook-Based Email Triggering System
-
-### Root Cause Analysis
-- **Issue**: Restoration complete emails not being sent despite successful job completion
-- **Problem**: Replicate webhooks were only updating job status but NOT triggering order completion checks
-- **Impact**: 22 orders stuck in "processing" status with 23 completed restoration jobs but only 1 email sent
-
-### Webhook Integration Fixes
-- **Order Completion Logic**: Added comprehensive order completion check to Replicate webhook handler
-- **Real-Time Email Triggering**: Webhooks now immediately trigger restoration complete emails when all jobs complete
-- **Status Updates**: Orders automatically transition from "processing" to "completed" via webhooks
-- **Email Mapping**: Ensured emails are properly mapped against order IDs for order confirmation and restoration complete
-
-### Email Worker Optimization
-- **Frequency Reduction**: Reduced email worker polling from 10 seconds to 60 seconds (1 minute)
-- **Webhook Priority**: Primary email triggering now happens via real-time webhooks, not polling
-- **Backup Processing**: Email worker serves as backup for any missed webhook triggers
-
-### Technical Implementation
-- **Webhook Handler**: Added `checkOrderCompletion()` function to `/api/webhooks/replicate/route.ts`
-- **Email Queuing**: Added `queueRestorationCompleteEmail()` function for consistent email formatting
-- **Order Status Management**: Proper order status transitions based on job completion states
-- **Error Handling**: Comprehensive error logging for webhook-based completion flow
-
-### Database Relationship Fixes
-- **Email Mapping**: All emails properly mapped to order IDs as specified:
-  - Order confirmation emails: mapped to order ID
-  - Restoration complete emails: mapped to order ID  
-  - Family share emails: mapped to individual image IDs
-- **Job Relationships**: Restoration jobs linked via `original_image_id` to images, images linked to orders
-
-### Recovery Script
-- **Stuck Order Processing**: Created script to trigger completion flow for existing stuck orders
-- **Retroactive Email Queuing**: Automatically queue missing restoration complete emails
-- **Status Correction**: Update order statuses for completed jobs that were stuck in processing
-
-### Workflow Improvements
-- **Real-Time Processing**: Webhooks provide immediate notification when Replicate tasks complete
-- **Reduced Latency**: Email delivery now happens within seconds of job completion instead of polling delays
-- **System Reliability**: Webhook-based system eliminates dependency on worker polling frequency
-
-### Impact
-- ✅ **Real-time email delivery** via webhook triggers instead of polling
-- ✅ **Proper order status management** with automatic transitions
-- ✅ **Reduced email worker load** with 1-minute polling frequency
-- ✅ **Consistent email mapping** against correct entity IDs
-- ✅ **Recovery mechanism** for existing stuck orders
-- 🔄 **Testing Required**: Verify webhook-based completion flow with new orders
-
-## [2025-06-20T19:33:58+05:30] - Viewport Optimization for Photo Reveal Impact
-
-### Enhanced Photo Reveal Experience
-- **Header Spacing Reduction**: Reduced header padding from `py-8 sm:py-12 lg:py-20` to `py-4 sm:py-6 lg:py-8`
-- **Content Spacing Optimization**: Reduced main content padding from `py-8 sm:py-12` to `py-4 sm:py-6`
-- **Title Margin Adjustment**: Reduced title bottom margin from `mb-2` to `mb-1` for tighter spacing
-
-### Interactive Viewer Enhancements
-- **Increased Photo Heights**: Enhanced InteractiveViewer heights for better visual impact:
-  - Mobile: `h-72` (288px) - increased from `h-64` (256px)
-  - Small screens: `h-80` (320px) 
-  - Medium screens: `h-96` (384px)
-  - Large screens: `h-[500px]` (500px)
-  - Extra large: `h-[600px]` (600px)
-  - 2XL screens: `h-[700px]` (700px) - new breakpoint added
-- **Enhanced Touch Interactions**: Added proper touch event handlers for mobile photo comparison
-- **Visual Polish**: Restored rounded corners and shadow styling for professional appearance
-
-### Layout Spacing Optimizations
-- **Mobile Layout**: Reduced component spacing from `space-y-6` to `space-y-4` for tighter layout
-- **Desktop Layout**: Reduced grid gap from `gap-8` to `gap-6` and column spacing from `space-y-6` to `space-y-4`
-- **Viewport Efficiency**: Maximized photo visibility within the viewport for stronger "aha moment"
-
-### User Experience Improvements
-- **Immediate Photo Focus**: Reduced text-to-photo distance for faster visual engagement
-- **Larger Photo Display**: Increased photo real estate across all screen sizes
-- **Better Mobile Experience**: Optimized touch interactions and spacing for mobile users
-- **Progressive Enhancement**: Larger photos on bigger screens for desktop users
-
-### Technical Details
-- **Responsive Heights**: Progressive height scaling from mobile (288px) to 2XL (700px)
-- **Touch Events**: Added `onTouchMove` and `onTouchEnd` handlers for mobile slider interaction
-- **Mouse Events**: Enhanced `onMouseLeave` behavior for better desktop interaction
-- **Layout Efficiency**: Reduced unnecessary whitespace while maintaining visual hierarchy
-
-### Impact
-- ✅ **Stronger photo reveal impact** with larger, more prominent image display
-- ✅ **Reduced cognitive load** with tighter spacing and immediate photo focus
-- ✅ **Enhanced mobile experience** with proper touch interactions
-- ✅ **Better viewport utilization** across all screen sizes
-- ✅ **Maintained responsive design** while optimizing for visual impact
-
-## [2025-06-20T22:39:21+05:30] Google Tag Manager Integration Complete
+- **2025-06-21 19:57**: Improved inline upload error handling in photo upload component
+  - Upload errors now display as contextual inline messages instead of just toast notifications
+  - Added "Try Again" button for immediate retry functionality
+  - Errors automatically clear when new files are uploaded or retry is attempted
+  - Improved error message styling with clear visual hierarchy and red color scheme
+  - Better user experience for handling API failures, file validation errors, and checkout issues
+  - Maintains both inline errors and toast notifications for comprehensive feedback
 
 ### Added
-- **Google Tag Manager Integration**: Complete GTM setup with conditional rendering based on `NEXT_PUBLIC_GTM_ID` environment variable
-  - Added GTM script and noscript tags to root layout (`app/layout.tsx`)
-  - Implemented comprehensive analytics tracking across the application
-  - Created analytics utility module (`lib/analytics.ts`) with functions for:
-    - Page view tracking
-    - Photo upload tracking  
-    - Restoration completion tracking
-    - Photo download tracking (single and bulk)
-    - Photo sharing tracking
-    - Purchase completion tracking
-    - Form submission tracking
-    - User engagement tracking
-    - Error tracking
+- **2025-06-21 19:53**: Created reusable GenericError component (`/components/GenericError.tsx`)
+  - Handles unexpected server-side errors, API failures, and database issues
+  - Features warm, reassuring messaging: "Oh Dear, a Little Hiccup."
+  - Provides retry functionality and contact support options
+  - Implements brand-consistent design with proper colors, typography, and shadows
+  - Accepts optional custom message and configurable contact options
+  - Integrated into payment-success page error handling
+- **2025-06-21 19:50**: Created custom 404 "Not Found" page (`/app/not-found.tsx`)
+  - Replaces default Next.js 404 page with brand-consistent design
+  - Uses warm, vintage-inspired messaging: "Oops! This Page Seems a Little Faded."
+  - Features camera icon and reassuring tone aligned with RestoreClick brand
+  - Provides clear navigation options: Return to Homepage and Start Restoring Photos
+  - Implements proper brand colors, typography, and shadow styling
 
-### Modified Components with Analytics
-- **Payment Success Page** (`app/payment-success/page.tsx`):
-  - Added page view tracking on load
-  - Added restoration completion tracking when photos finish processing
-  - Added photo sharing tracking for family share functionality
-  
-- **Contact Page** (`app/contact/ContactPageClient.tsx`):
-  - Added page view tracking
-  - Added form submission tracking (success and failure)
-  - Added error tracking for failed submissions
-  
-- **FAQ Page** (`app/faq/FaqPageClient.tsx`):
-  - Added page view tracking
-  - Added engagement tracking when users expand FAQ items
-  
-- **Homepage Hero Section** (`components/landing/editorial-hero-section.tsx`):
-  - Converted to client component for analytics support
-  - Added page view tracking for homepage
-  - Added engagement tracking for main CTA button clicks
-  
-- **Action Panel** (`components/restoration/ActionPanel.tsx`):
-  - Added download tracking for single photo downloads
-  - Integrated with existing download functionality
-  
-- **Processing Overlay** (`components/restoration/ProcessingOverlay.tsx`):
-  - Added engagement tracking when processing starts
-  - Tracks total images and current image being processed
-  
-- **Stripe Webhook Handler** (`app/api/webhooks/stripe/route.ts`):
-  - Added purchase completion tracking after successful order creation
-  - Tracks order ID, amount, currency, and number of photos
-
-### Technical Implementation
-- **Environment Variable**: Uses `NEXT_PUBLIC_GTM_ID` for GTM container ID
-- **Conditional Loading**: GTM scripts only load when environment variable is set
-- **TypeScript Support**: Fixed dataLayer type definition for proper TypeScript support
-- **Error Handling**: Comprehensive error tracking across form submissions and API calls
-- **Event Categorization**: Organized events into categories (Engagement, Lead Generation, etc.)
-
-### Event Types Tracked
-1. **Page Views**: Homepage, payment success, contact, FAQ pages
-2. **User Engagement**: CTA clicks, FAQ expansions, processing interactions
-3. **Photo Operations**: Uploads, downloads, sharing, restoration completion
-4. **E-commerce**: Purchase completion with order details
-5. **Lead Generation**: Contact form submissions
-6. **Errors**: Failed form submissions and API errors
-
-### Next Steps
-- Set `NEXT_PUBLIC_GTM_ID` environment variable in production
-- Configure GTM container with appropriate triggers and tags
-- Set up conversion tracking and goal funnels in Google Analytics
-- Monitor event data flow and adjust tracking as needed
-
----
-
-## [2024-06-20 22:58] - Build Error Fixes
+## [2025-06-21] - Single Photo Download Filename Fix 
 
 ### Fixed
-- **Critical Build Errors**: Fixed TypeScript compilation errors blocking production builds
-  - Fixed `markRestorationJobFailed` function call to use correct 2-parameter signature instead of 3
-  - Added missing `NEXT_PUBLIC_APP_URL` environment variable (set to http://localhost:3001)
-  - Updated Supabase URL from placeholder to correct project URL (https://qtgskqusswnsveguehtm.supabase.co)
-
-### Remaining Issues
-- **Next.js Build Warnings**: Several pages have `useSearchParams()` not wrapped in Suspense boundaries
-  - Affects: payment-success, restore-old-photos, blog, homepage, and other pages
-  - These are prerendering errors that need Suspense boundary fixes for static generation
-- **Image Optimization Warnings**: Some components still use `<img>` instead of Next.js `<Image />`
-- **React Hook Dependency Warnings**: Missing dependencies in useEffect hooks
+- **Single Photo Download Filenames**: Resolved issue where downloads still had generic names like `photo_restored.png`
+- **Root Cause**: Restored images weren't inheriting original filename from parent images
+- **Solution**: Enhanced API logic to properly lookup parent image metadata for restored images
 
 ### Technical Details
-- TypeScript compilation now passes successfully
-- Environment variables properly configured for local development
-- Restoration worker method signatures corrected
-- Build process reaches static generation phase (progress from compilation errors)
+**Problem**: 
+- Original image: `originalFilename: "image in jpg.jpg"` 
+- Restored image: `originalFilename: "photo"`  (defaulting to generic name)
+- Result: Downloads named `photo_restored.png` instead of `image in jpg_restored.png`
 
-### Next Steps
-- Fix useSearchParams Suspense boundary issues for static generation
-- Address remaining image optimization and React hook warnings
-- Test production build deployment
+**Fix Applied** (`/app/api/orders/[id]/route.ts`):
+- Added parent image lookup for restored images
+- Restored images now inherit `original_filename` from their parent
+- Proper filename inheritance: `"image in jpg.jpg"` → `"image in jpg_restored.png"`
 
-## [2024-06-20 22:30] - Google Tag Manager Integration Complete
+### Verification
+**Before Fix**:
+```json
+{
+  "type": "restored",
+  "original_filename": "photo",
+  "display_name": "photo_restored"
+}
+```
 
-## [2024-06-20 23:01] - GitHub Repository Creation
+**After Fix**:
+```json
+{
+  "type": "restored", 
+  "original_filename": "image in jpg.jpg",
+  "display_name": "image in jpg_restored"
+}
+```
+
+### Results
+- **Single Downloads**: Now properly named `image in jpg_restored.png`
+- **Proper Extensions**: Maintains correct file extensions (.png, .jpg, .webp)
+- **Fallback Logic**: Enhanced fallback for edge cases
+- **User Experience**: Professional, recognizable download filenames
+
+**Status**: PRODUCTION READY - Single photo download filenames now working correctly
+
+## [2025-06-21] - Download Filename Implementation COMPLETE 
+
+### Status: PRODUCTION READY
+The download filename improvements have been fully implemented, tested, and verified. Users will now receive meaningful, human-readable filenames for both single photo downloads and ZIP archives.
+
+### Verified Results
+- **Single Photo Downloads**: `family_vacation_2023_restored.jpg` (instead of `restored-photo-1640995200000-1.png`)
+- **ZIP Downloads**: `RestoreClick_Order_20250621-000001.zip` containing properly named files
+- **Proper Extensions**: Automatically detected from MIME types (`.jpg`, `.png`, `.webp`)
+- **Cross-Platform**: Sanitized filenames work on Windows, Mac, and Linux
+
+### Implementation Summary
+- **Utility Functions**: Created comprehensive filename generation and sanitization
+- **API Enhancement**: Added computed filename fields to order responses
+- **Frontend Integration**: Updated components to use filename metadata
+- **Storage Service**: Improved ZIP creation with user-friendly names
+- **Fallback Logic**: Graceful handling when original filename unavailable
+- **Testing**: Verified end-to-end functionality with test infrastructure
+
+### Technical Verification
+- Data flow from upload → database → API → frontend → download confirmed working
+- Original filenames preserved in metadata throughout the process
+- MIME type detection and extension mapping functioning correctly
+- ZIP file creation using order numbers and original filenames
+
+### Cleanup
+- Removed temporary test endpoints and debugging code
+- Cleaned up console.log statements from production components
+- Maintained debugging capabilities in ActionPanel for troubleshooting
+
+**Impact**: Significantly improved user experience with professional, recognizable download filenames.
+
+## [Unreleased]
 
 ### Added
-- **GitHub Repository**: Created new public repository `restoreclick-v4-analytics`
-  - Repository URL: https://github.com/arul-buk/restoreclick-v4-analytics
-  - Description: "RestoreClickV4 - AI-powered photo restoration service with Google Tag Manager integration and build fixes"
-  - Initial commit includes all recent work: GTM integration, build fixes, analytics, and comprehensive testing
+- **PWA Install Prompt Feature**: Implemented a friendly, non-intrusive PWA install prompt that appears on the payment success page for engaged users
+  - Created `usePwaInstallPrompt.ts` hook to manage PWA installation prompt state using the browser's `beforeinstallprompt` event
+  - Developed `InstallPwaBanner.tsx` component with warm, vintage-inspired design that suggests users add RestoreClick to their home screen
+  - Integrated install banner into the payment success page (`PaymentSuccessContent.tsx`) for optimal user engagement timing
+  - Banner only appears when the browser supports PWA installation and the prompt event is available
+  - Uses brand-consistent styling with `Smartphone` and `Download` icons from Lucide React
+  - Provides clear call-to-action with "Add to Home Screen" button that triggers the native browser install prompt
 
-### Updated
-- **README.md**: Enhanced with current project status, recent improvements, and technology stack
-  - Added latest updates section highlighting completed features
-  - Updated technology stack with comprehensive list
-  - Documented current build status and deployment readiness
+### Added
+- **Online-Only Behavior Implementation**: Revised the application to be "online-only" with a non-closable, full-screen overlay when users are offline
+  - Created `ConnectionStatusContext.tsx` - Global React context to track online/offline status using browser's `navigator.onLine` and window events
+  - Developed `OfflineOverlay.tsx` - Full-screen, non-closable overlay component that blocks app usage when offline
+  - Integrated ConnectionStatusProvider and OfflineOverlay into the root ClientLayout for global coverage
+  - Uses brand-consistent styling with warm colors and proper messaging about requiring internet connection
+  - Smooth animations using Framer Motion for overlay transitions
+  - PWA purpose clarified: for app-like installation and fast asset loading, not offline functionality
 
-### Technical Details
-- Git repository initialized and configured with main branch
-- All 108 files committed including new features, tests, and documentation
-- GitHub CLI authentication configured for future repository management
-- Repository ready for Vercel deployment integration
+- **Simplified Error Handling**: Streamlined GenericError component to focus only on server errors
+  - Removed complex network error handling since offline state is now managed globally
+  - Simplified interface to only handle server-side technical issues
+  - Updated styling to use red color scheme for server error distinction
+  - Maintained brand-consistent messaging and retry functionality
 
-### Next Steps
-- Connect repository to Vercel for automated deployments
-- Set up GitHub Actions for CI/CD pipeline
-- Configure branch protection rules and collaboration settings
+- **PWA Install Prompt Feature**: Implemented a friendly, non-intrusive PWA install prompt that appears on the payment success page for engaged users
+{{ ... }}
 
-## [2024-06-20 22:58] - Build Error Fixes
+## [2025-06-21] - Service Worker Cache Fix and Vercel Analytics Integration
 
-## [2024-06-20 23:07] - Repository Renamed to RestoreClickV5
-
-### Updated
-- **Repository Name**: Changed from `restoreclick-v4-analytics` to `restoreclick-v5`
-  - New Repository URL: https://github.com/arul-buk/restoreclick-v5
-  - Local git remote updated to point to new repository
-  - README.md updated to reflect new project name RestoreClickV5
-
-### Technical Details
-- Git remote URL updated: `git remote set-url origin https://github.com/arul-buk/restoreclick-v5.git`
-- All existing commits and history preserved
-- Project branding updated to RestoreClickV5 for consistency
-
-## [2024-06-20 23:01] - GitHub Repository Creation
-
-## [2024-06-20 23:22] - Suspense Boundary Fixes - Build Success! 🎉
+### Added
+- **Vercel Analytics Integration**: Added @vercel/analytics package for production analytics tracking
+  - Integrated Analytics component in root layout for automatic page view tracking
+  - Provides detailed user behavior insights for optimization
 
 ### Fixed
-- **Critical Build Issue**: Fixed useSearchParams Suspense boundary errors preventing deployment
-  - Wrapped payment-success page in Suspense boundary to resolve prerendering errors
-  - Wrapped GoogleTagManager component in Suspense boundary in clientLayout
-  - Split PaymentSuccessContent into separate component for proper Suspense handling
+- **Service Worker Cache Errors**: Fixed PWA service worker cache failures
+  - Updated cache URLs to only include specific, existing resources (/, /manifest.json, /favicon.ico)
+  - Implemented graceful error handling with Promise.allSettled for individual cache operations
+  - Added proper error logging and fallback handling for failed cache operations
+  - Prevents "Failed to execute 'addAll' on 'Cache': Request failed" errors
 
-### Build Status
-- **✅ Build Success**: `npm run build` now completes successfully
-- **✅ Static Generation**: All 30 pages generate properly without errors
-- **✅ TypeScript Compilation**: No compilation errors
-- **✅ Linting**: Passes with only minor warnings
+- **Online-Only Behavior Implementation**: Revised the application to be "online-only" with a non-closable, full-screen overlay when users are offline
+{{ ... }}
 
-### Technical Improvements
-- **Suspense Boundaries**: Proper handling of client-side hooks in SSR environment
-- **Component Architecture**: Better separation of concerns with PaymentSuccessContent
-- **Error Resolution**: Fixed "useSearchParams() should be wrapped in suspense boundary" warnings
-- **Static Optimization**: All pages can now be prerendered correctly
+## [2025-06-21] - Vercel Production Deployment Fixes
 
-### Deployment Status
-- **Local Build**: ✅ Successful
-- **Vercel Deployment**: ⚠️ Requires environment variable configuration
-  - Build succeeds locally but fails on Vercel due to invalid Supabase credentials
-  - Need to configure proper SUPABASE_SERVICE_ROLE_KEY for production
+### Fixed
+- **Vercel Production Deployment Issues**: Resolved SSR and build issues preventing proper deployment
+  - Moved ConnectionStatusContext from `/context/` to `/lib/context/` for better path resolution
+  - Added proper SSR handling to ConnectionStatusProvider with client-side hydration checks
+  - Added SSR safety to OfflineOverlay component to prevent hydration mismatches
+  - Improved error boundaries and fallback handling for browser APIs
+  - Fixed import paths to use standard Next.js conventions
+
+- **Service Worker Cache Errors**: Fixed PWA service worker cache failures
+  - Updated cache URLs to only include specific, existing resources (/, /manifest.json, /favicon.ico)
+  - Implemented graceful error handling with Promise.allSettled for individual cache operations
+  - Added proper error logging and fallback handling for failed cache operations
+  - Prevents "Failed to execute 'addAll' on 'Cache': Request failed" errors
+
+## 2025-01-21 - Webhook Processing Issue Diagnosis
+
+### Issue
+- Error: "Order not found for checkout session: cs_test_..." on Vercel deployment
+- Processing page unable to find order after Stripe checkout completion
+
+### Investigation
+- Created diagnostic script to check webhook and database connectivity
+- Found invalid Stripe API key (placeholder) in local .env.local
+- Found invalid Supabase service role key (placeholder) in local .env.local
+- User claims Vercel environment variables are correct
+
+### Root Cause
+- **Invalid API credentials preventing webhook from creating orders**
+- Local environment has placeholder values for both Stripe and Supabase keys
+- Webhook handler cannot authenticate with either service to create orders
+
+### Immediate Actions
+1. Update local .env.local with valid Stripe and Supabase credentials
+2. Verify Vercel environment variables match production values
+3. Check Stripe webhook endpoint configuration in Stripe dashboard
+4. Monitor Vercel function logs for webhook errors
+
+## 2025-01-21 - Comprehensive Webhook Verification
+
+### Additional Findings
+- Created verify-webhook-setup.ts script to check:
+  - Stripe webhook endpoints configuration
+  - Recent checkout.session.completed events
+  - Direct database order creation capability
+  - Specific failed checkout session details
+  
+### Results
+- **Both Stripe and Supabase API keys are invalid in local environment**
+- Cannot verify webhook configuration due to invalid Stripe API key
+- Cannot test database operations due to invalid Supabase key
+- No orders exist in database for the failed checkout session
+- No orders exist with the batch_id in metadata
+- No recent orders found in database at all
+
+### Critical Issue Identified
+- **Webhooks are not creating orders in the database**
+- This is not an identifier mismatch issue
+- The webhook handler is likely failing due to:
+  1. Invalid API credentials on Vercel
+  2. Webhook endpoint not properly configured
+  3. Webhook secret mismatch
+  4. Runtime errors in webhook handler
 
 ### Next Steps
-- Configure production environment variables in Vercel
-- Set up proper Supabase credentials for deployment
-- Test deployed application functionality
-- Monitor for any runtime issues
+1. **Verify Vercel Environment Variables**:
+   - STRIPE_SECRET_KEY (must start with sk_test_ or sk_live_)
+   - STRIPE_WEBHOOK_SECRET (must match Stripe dashboard)
+   - SUPABASE_SERVICE_ROLE_KEY (must be valid service role key)
+   - NEXT_PUBLIC_SUPABASE_URL (must be valid Supabase URL)
 
-This represents a major milestone - the application now builds successfully and is ready for production deployment with proper environment configuration.
+2. **Check Stripe Webhook Configuration**:
+   - Log into Stripe Dashboard
+   - Go to Developers → Webhooks
+   - Verify endpoint URL: https://restoreclickv4.vercel.app/api/webhooks/stripe
+   - Check webhook signing secret matches STRIPE_WEBHOOK_SECRET on Vercel
+   - Look for failed webhook attempts in Stripe dashboard
+
+3. **Monitor Vercel Function Logs**:
+   - Check /api/webhooks/stripe function logs on Vercel
+   - Look for authentication errors or runtime exceptions
+   - Verify webhook events are being received
+
+4. **Test with Stripe CLI**:
+   - Install Stripe CLI locally
+   - Forward webhooks to local development
+   - Test checkout.session.completed event
+   - Verify order creation locally first

@@ -7,8 +7,7 @@ import ActionPanel from '@/components/restoration/ActionPanel';
 import ThumbnailGallery from '@/components/restoration/ThumbnailGallery';
 import ShareModal from '@/components/restoration/ShareModal';
 import EmailModal from '@/components/restoration/EmailModal';
-import ProcessingOverlay from '@/components/restoration/ProcessingOverlay';
-import ProcessingError from '@/components/restoration/ProcessingError';
+import GenericError from '@/components/GenericError';
 import { 
   OrderRestorationPoller, 
   OrderPhoto, 
@@ -19,11 +18,15 @@ import {
 import Link from 'next/link';
 import { Button } from '@/components/ui/button';
 import { trackRestorationComplete, trackPhotoDownload, trackPhotoShare, trackPurchase, trackPageView } from '@/lib/analytics';
+import InstallPwaBanner from '@/components/InstallPwaBanner';
 
 interface ProcessedPhoto {
   id: string;
   originalUrl: string;
   restoredUrl: string;
+  originalFilename?: string;
+  displayName?: string;
+  fileExtension?: string;
 }
 
 export default function PaymentSuccessContent() {
@@ -35,8 +38,6 @@ export default function PaymentSuccessContent() {
   const [activePhotoIndex, setActivePhotoIndex] = useState(0);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  const [pollingStatus, setPollingStatus] = useState<OrderPollingStatus | null>(null);
-  const [poller, setPoller] = useState<OrderRestorationPoller | null>(null);
   const [currentOrderId, setCurrentOrderId] = useState<string | null>(null);
 
   // Modal states
@@ -70,40 +71,65 @@ export default function PaymentSuccessContent() {
 
         setCurrentOrderId(resolvedOrderId);
 
-        // Create and start order poller
-        const orderPoller = new OrderRestorationPoller(resolvedOrderId, {
-          onProgress: (status: OrderPollingStatus) => {
-            setPollingStatus(status);
-            console.log('Order polling progress:', status);
-          },
-          onComplete: (completedPhotos: OrderPhoto[]) => {
-            const processedPhotos = completedPhotos
-              .filter(photo => photo.status === 'completed' && photo.restoredUrl)
-              .map(photo => ({
-                id: photo.id,
-                originalUrl: photo.originalUrl,
-                restoredUrl: photo.restoredUrl!
-              }));
+        // Try to fetch completed photos directly
+        try {
+          const response = await fetch(`/api/orders/${resolvedOrderId}`);
+          if (response.ok) {
+            const orderData = await response.json();
             
-            setPhotos(processedPhotos);
-            setIsLoading(false);
-            
-            // Track restoration completion
-            if (resolvedOrderId && processedPhotos.length > 0) {
-              trackRestorationComplete(resolvedOrderId, processedPhotos.length);
+            // Check if order is completed and has images
+            if (orderData.status === 'completed' && orderData.images) {
+              const originalImages = orderData.images.filter((img: any) => img.type === 'original');
+              const restoredImages = orderData.images.filter((img: any) => img.type === 'restored');
+              
+              if (restoredImages.length > 0) {
+                const processedPhotos = originalImages.map((original: any) => {
+                  const restored = restoredImages.find((r: any) => r.parent_image_id === original.id);
+                  if (restored) {
+                    const processedPhoto = {
+                      id: original.id,
+                      originalUrl: original.public_url,
+                      restoredUrl: restored.public_url,
+                      originalFilename: original.original_filename,
+                      displayName: restored.display_name,
+                      fileExtension: restored.file_extension
+                    };
+                    return processedPhoto;
+                  }
+                  return null;
+                }).filter(Boolean);
+                
+                if (processedPhotos.length > 0) {
+                  setPhotos(processedPhotos);
+                  setIsLoading(false);
+                  
+                  // Track restoration completion
+                  trackRestorationComplete(resolvedOrderId, processedPhotos.length);
+                  
+                  return; // Success - no need for polling
+                }
+              }
             }
             
-            console.log('All order photos completed:', processedPhotos);
-          },
-          onError: (error: Error) => {
-            setError(`Failed to load photos: ${error.message}`);
-            setIsLoading(false);
-            console.error('Order polling error:', error);
+            // If order is still processing, redirect to processing page
+            if (orderData.status === 'processing') {
+              window.location.href = `/processing?session_id=${sessionId}`;
+              return;
+            }
+            
+            // If order failed, redirect to processing-failed page
+            if (orderData.status === 'failed') {
+              window.location.href = `/processing-failed?session_id=${sessionId}`;
+              return;
+            }
           }
-        });
+        } catch (directFetchError) {
+          // console.log('Direct fetch failed:', directFetchError);
+        }
 
-        setPoller(orderPoller);
-        await orderPoller.startPolling();
+        // If we get here, something went wrong
+        setError('Unable to load your restored photos. Please try again or contact support.');
+        setIsLoading(false);
 
       } catch (err) {
         console.error('Error initializing order data:', err);
@@ -113,13 +139,6 @@ export default function PaymentSuccessContent() {
     };
 
     initializeData();
-
-    // Cleanup on unmount
-    return () => {
-      if (poller) {
-        poller.stopPolling();
-      }
-    };
   }, [sessionId, orderId]);
 
   // Handle thumbnail clicks
@@ -157,7 +176,7 @@ export default function PaymentSuccessContent() {
         sharerName: formData.sharerName
       });
 
-      console.log('Photos shared successfully:', result);
+      // console.log('Photos shared successfully:', result);
       setIsShareModalOpen(false);
       
       // Track photo sharing
@@ -197,7 +216,7 @@ export default function PaymentSuccessContent() {
         message: formData.message || 'Here are your restored photos!'
       });
 
-      console.log('Photos emailed successfully:', result);
+      // console.log('Photos emailed successfully:', result);
       setIsEmailModalOpen(false);
       
       // Show success message
@@ -211,28 +230,28 @@ export default function PaymentSuccessContent() {
     }
   }, [currentOrderId]);
 
-  // Loading state
+  // Loading state - show simple loading instead of ProcessingOverlay
   if (isLoading) {
     return (
-      <ProcessingOverlay
-        totalImages={pollingStatus?.totalImages || 1}
-        currentImage={pollingStatus?.processingImages || 1}
-        completedImages={pollingStatus?.completedImages || 0}
-        elapsedTime={pollingStatus?.elapsedTime || 0}
-        maxTime={600000} // 10 minutes
-      />
+      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
+        <div className="text-center">
+          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mx-auto mb-4"></div>
+          <h1 className="text-2xl font-bold text-gray-900 mb-2">Loading Your Results</h1>
+          <p className="text-gray-600">Please wait while we load your restored photos...</p>
+        </div>
+      </div>
     );
   }
 
   // Error state
   if (error) {
     return (
-      <ProcessingError
-        failedImages={[]}
-        timedOutImages={[]}
-        onRetry={() => window.location.reload()}
-        onContinue={() => window.location.href = '/pricing'}
-      />
+      <div className="min-h-screen bg-brand-background flex items-center justify-center px-4">
+        <GenericError
+          onRetry={() => window.location.reload()}
+          message={error}
+        />
+      </div>
     );
   }
 
@@ -302,11 +321,17 @@ export default function PaymentSuccessContent() {
           <ActionPanel
             activePhoto={{
               id: activePhoto.id,
-              restoredUrl: activePhoto.restoredUrl
+              restoredUrl: activePhoto.restoredUrl,
+              originalFilename: activePhoto.originalFilename,
+              displayName: activePhoto.displayName,
+              fileExtension: activePhoto.fileExtension
             }}
             allPhotos={photos.map(photo => ({
               id: photo.id,
-              restoredUrl: photo.restoredUrl
+              restoredUrl: photo.restoredUrl,
+              originalFilename: photo.originalFilename,
+              displayName: photo.displayName,
+              fileExtension: photo.fileExtension
             }))}
             onShareClick={handleShareClick}
             onSendToMyEmailClick={handleSendToMyEmailClick}
@@ -322,7 +347,7 @@ export default function PaymentSuccessContent() {
               We&apos;ve restored your photos with care. Download, share, or send them to yourself!
             </p>
             <Button size="lg" asChild className="w-full">
-              <Link href="/pricing">Restore More Photos</Link>
+              <Link href="/restore-old-photos">Restore More Photos</Link>
             </Button>
           </div>
         </div>
@@ -365,7 +390,7 @@ export default function PaymentSuccessContent() {
                   We&apos;ve restored your photos with care. Download, share, or send them to yourself!
                 </p>
                 <Button size="lg" asChild>
-                  <Link href="/pricing">Restore More Photos</Link>
+                  <Link href="/restore-old-photos">Restore More Photos</Link>
                 </Button>
               </div>
             </div>
@@ -376,11 +401,17 @@ export default function PaymentSuccessContent() {
                 <ActionPanel
                   activePhoto={{
                     id: activePhoto.id,
-                    restoredUrl: activePhoto.restoredUrl
+                    restoredUrl: activePhoto.restoredUrl,
+                    originalFilename: activePhoto.originalFilename,
+                    displayName: activePhoto.displayName,
+                    fileExtension: activePhoto.fileExtension
                   }}
                   allPhotos={photos.map(photo => ({
                     id: photo.id,
-                    restoredUrl: photo.restoredUrl
+                    restoredUrl: photo.restoredUrl,
+                    originalFilename: photo.originalFilename,
+                    displayName: photo.displayName,
+                    fileExtension: photo.fileExtension
                   }))}
                   onShareClick={handleShareClick}
                   onSendToMyEmailClick={handleSendToMyEmailClick}
@@ -390,6 +421,11 @@ export default function PaymentSuccessContent() {
             </div>
           </div>
         </div>
+      </div>
+
+      {/* PWA Install Banner */}
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 pb-12">
+        <InstallPwaBanner />
       </div>
 
       {/* Modals */}

@@ -68,7 +68,7 @@ export default function ContactPageClient() {
           <div className="lg:sticky lg:top-28">
             <div className="relative aspect-[3/4] w-full rounded-lg overflow-hidden shadow-soft">
               <Image
-                src="/placeholder.jpg"
+                src="/images/lily-at-work.jpg"
                 alt="Lily at work, smiling warmly"
                 fill
                 className="object-cover"
