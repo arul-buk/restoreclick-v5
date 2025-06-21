@@ -26,7 +26,7 @@ export async function GET(request: Request) {
     
     let supabaseResult = {
       connected: false,
-      error: 'Not configured',
+      error: 'Not configured' as string | null,
       orderCount: 0
     };
 
@@ -51,17 +51,17 @@ export async function GET(request: Request) {
     }
 
     // 2. Test Stripe connection
-    let stripeResult = {
+    let stripeResult: { connected: boolean; error: string | null; accountId: string | null } = {
       connected: false,
       error: 'Not configured',
-      accountId: null as string | null
+      accountId: null
     };
 
     const stripeKey = process.env.STRIPE_SECRET_KEY;
     if (stripeKey) {
       try {
         const stripe = new Stripe(stripeKey, { 
-          apiVersion: '2024-11-20.acacia' 
+          apiVersion: '2025-05-28.basil' 
         });
         const account = await stripe.accounts.retrieve();
         stripeResult = {
