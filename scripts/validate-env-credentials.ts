@@ -23,7 +23,7 @@ async function validateCredentials() {
       
       // Try to initialize Stripe
       try {
-        const stripe = new Stripe(stripeKey, { apiVersion: '2024-11-20.acacia' });
+        const stripe = new Stripe(stripeKey, { apiVersion: '2025-05-28.basil' });
         const account = await stripe.accounts.retrieve();
         console.log(`✅ Stripe connection successful! Account: ${account.id}`);
       } catch (error: any) {
